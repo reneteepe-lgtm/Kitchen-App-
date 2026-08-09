@@ -19,6 +19,13 @@ import {
   plural,
 } from './format.js';
 
+/**
+ * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer im Cache-Namen
+ * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
+ * nachprüfbar ist, welcher Stand gerade läuft.
+ */
+export const APP_VERSION = '1.1.0';
+
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -537,6 +544,7 @@ async function main() {
   await store.init();
   store.subscribe(render);
 
+  $('#app-version').textContent = APP_VERSION;
   $('#setting-lead').value = String(store.getSetting('leadDays', DEFAULT_SETTINGS.leadDays));
   $('#setting-expiry').value = String(
     store.getSetting('expiryWarnDays', DEFAULT_SETTINGS.expiryWarnDays),
@@ -546,11 +554,45 @@ async function main() {
   switchView(activeView);
   render();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {
+  setupServiceWorker();
+}
+
+/**
+ * Registriert den Service Worker und sorgt dafür, dass eine neue Fassung
+ * ohne Zutun ankommt.
+ *
+ * Ohne das hier bekäme man ein Update erst beim übernächsten Start: Der
+ * Worker liefert zuerst aus dem Cache und holt das Neue nur im Hintergrund.
+ * Für den Offline-Betrieb ist das richtig, als Update-Weg zu umständlich --
+ * erst recht auf dem Handy, wo eine App selten wirklich beendet wird.
+ */
+function setupServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  // Ob diese Seite schon von einem Worker bedient wird. Beim allerersten
+  // Besuch übernimmt einer erstmalig, und das ist kein Update -- ohne diese
+  // Unterscheidung lüde die App bei jedem Erstbesuch grundlos neu.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return;
+    // Mitten in einer Eingabe nicht dazwischenfunken. Der neue Stand liegt
+    // dann bereits im Cache und ist beim nächsten Start von selbst da.
+    if (document.querySelector('dialog[open]')) return;
+    reloading = true;
+    location.reload();
+  });
+
+  navigator.serviceWorker
+    .register('sw.js')
+    .then((registration) => {
+      // Von sich aus sieht der Browser nur alle paar Stunden nach.
+      registration.update().catch(() => {});
+    })
+    .catch(() => {
       /* Offline-Betrieb ist ein Extra, kein Muss. */
     });
-  }
 }
 
 main();

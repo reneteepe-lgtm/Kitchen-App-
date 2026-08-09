@@ -45,6 +45,25 @@ npm run serve       # http://localhost:8080
 Ein Server ist nötig, weil die App aus ES-Modulen besteht — über `file://`
 lädt der Browser die nicht.
 
+### Eine neue Fassung veröffentlichen
+
+Änderungen auf den Branch pushen, den GitHub Pages bedient — das genügt.
+Auf den Handys kommt die neue Fassung beim nächsten Öffnen von selbst an:
+Die App sieht bei jedem Start nach, ob es etwas Neues gibt, holt es und
+lädt sich einmal neu. Welcher Stand gerade läuft, steht unter **Mehr** ganz
+unten.
+
+Eine Sache ist dabei von Hand zu pflegen: die Versionsnummer an **beiden**
+Stellen, weil der Service Worker als eigenständige Datei läuft und nichts
+aus der App importieren kann.
+
+- `js/app.js` → `APP_VERSION`
+- `sw.js` → `CACHE` (`kuechenvorrat-v<nummer>`)
+
+Die Nummer im Cache-Namen ist das, was den Browser die Datei überhaupt als
+geändert erkennen lässt. Bleibt sie stehen, bemerkt niemand ein Update.
+`npm test` schlägt fehl, wenn die beiden Angaben auseinanderlaufen.
+
 ### Tests
 
 ```bash
@@ -52,7 +71,10 @@ npm test
 ```
 
 Deckt die Rechenlogik ab: Verbrauchsschätzung, Reichweite, Chargenverbrauch
-nach Ablaufdatum, Einkaufsliste, Rückgängig, Sicherung und Zusammenführen.
+nach Ablaufdatum, Einkaufsliste, Rückgängig, Sicherung und Zusammenführen —
+dazu die Stellen, an denen ein Fehler still bliebe: die Formatnamen der
+Barcode-Bibliothek, die Dateiliste des Service Workers und der Gleichlauf
+der beiden Versionsangaben.
 
 ## Zu zweit nutzen
 

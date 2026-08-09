@@ -362,6 +362,17 @@ main {
   margin-bottom: 0;
 }
 
+.version-line {
+  margin: 20px 4px 8px;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.version-line .field-hint {
+  margin-top: 4px;
+}
+
 .button {
   flex: 1;
   min-height: var(--tap);

@@ -10,7 +10,16 @@
  * ein sauber fehlschlagender Aufruf, den die App ohnehin abfängt.
  */
 
-const CACHE = 'kuechenvorrat-v1';
+/**
+ * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer in
+ * `js/app.js` (APP_VERSION) mitziehen. Ein Test wacht darüber, dass beide
+ * übereinstimmen.
+ *
+ * Die Nummer steckt bewusst im Cache-Namen: Sie ist der Auslöser dafür,
+ * dass der Browser diese Datei als geändert erkennt, den neuen Worker
+ * installiert und der alte Cache verworfen wird.
+ */
+const CACHE = 'kuechenvorrat-v1.1.0';
 
 const SHELL = [
   './',
@@ -35,10 +44,17 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      // addAll bricht komplett ab, wenn eine einzige Datei fehlt. Einzeln
-      // ablegen heißt: die App ist auch dann offline nutzbar, wenn etwa ein
-      // Icon fehlt.
-      .then((cache) => Promise.allSettled(SHELL.map((url) => cache.add(url))))
+      // Zwei Dinge auf einmal:
+      //   `allSettled` statt `addAll`, weil addAll komplett abbricht, sobald
+      //   eine einzige Datei fehlt -- die App soll auch dann offline laufen,
+      //   wenn etwa ein Icon fehlt.
+      //
+      //   `cache: 'reload'`, weil ein gewöhnlicher Abruf durch den normalen
+      //   Browser-Cache ginge. Der liefert bei GitHub Pages minutenlang die
+      //   vorige Fassung, und das Update landete gar nicht erst im Cache.
+      .then((cache) =>
+        Promise.allSettled(SHELL.map((url) => cache.add(new Request(url, { cache: 'reload' })))),
+      )
       .then(() => self.skipWaiting()),
   );
 });
