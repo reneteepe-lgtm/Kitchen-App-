@@ -25,7 +25,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.4.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -171,22 +171,27 @@ function shoppingReason(item) {
  * steht, weiß es besser als die App.
  */
 function manualRow({ wish, product, stock }) {
-  const row = el('li', 'item');
+  const row = el('li', `item${wish.done ? ' is-done' : ''}`);
+
+  // Antippen hakt ab -- die Geste, die man von einer Einkaufsliste erwartet.
   const main = el('button', 'item-main');
   main.appendChild(el('span', 'item-name', wish.text));
 
-  if (product && stock > 0) {
-    main.appendChild(el('span', 'item-note tone-warn', `Laut Vorrat noch ${stock} da`));
-    main.addEventListener('click', () => openDetail(product.id));
-  } else {
-    main.appendChild(el('span', 'item-note tone-empty', product ? 'nichts mehr da' : 'nur notiert'));
-    if (product) main.addEventListener('click', () => openDetail(product.id));
-  }
+  const note = wish.done
+    ? { text: 'erledigt', tone: 'empty' }
+    : product && stock > 0
+      ? { text: `Laut Vorrat noch ${stock} da`, tone: 'warn' }
+      : { text: product ? 'nichts mehr da' : 'nur notiert', tone: 'empty' };
+  main.appendChild(el('span', `item-note tone-${note.tone}`, note.text));
+
+  main.setAttribute('aria-pressed', String(!!wish.done));
+  main.title = wish.done ? 'Haken entfernen' : 'Abhaken';
+  main.addEventListener('click', () => pantry.setWishDone(wish.id, !wish.done));
 
   const actions = el('div', 'row-actions');
 
-  if (product && stock > 0) {
-    // Genau der Fall, den die App nicht selbst entscheiden kann: Die Zahl
+  if (!wish.done && product && stock > 0) {
+    // Der eine Fall, den die App nicht selbst entscheiden kann: Die Zahl
     // stimmt nicht. Als Korrektur gebucht, damit die Prognose sauber bleibt.
     const fix = el('button', 'chip-button', 'Ist leer');
     fix.type = 'button';
@@ -198,20 +203,21 @@ function manualRow({ wish, product, stock }) {
     actions.appendChild(fix);
   }
 
-  const bought = el('button', 'step step-plus', '+');
-  bought.title = 'Gekauft';
-  bought.setAttribute('aria-label', `${wish.text} gekauft`);
-  bought.addEventListener('click', async () => {
-    if (product) openStockDialog(product, { wishId: wish.id });
-    // Noch kein Produkt: erst anlegen, der Eintrag verschwindet danach.
-    else openProductDialog(null, { name: wish.text, wishId: wish.id });
-  });
-
   const drop = el('button', 'step', '×');
   drop.title = 'Von der Liste nehmen';
   drop.setAttribute('aria-label', `${wish.text} von der Liste nehmen`);
   drop.addEventListener('click', async () => {
     await pantry.removeWish(wish.id);
+    toast(`${wish.text} von der Liste genommen`);
+  });
+
+  const bought = el('button', 'step step-plus', '+');
+  bought.title = 'Gekauft und eingeräumt';
+  bought.setAttribute('aria-label', `${wish.text} einbuchen`);
+  bought.addEventListener('click', () => {
+    if (product) openStockDialog(product, { wishId: wish.id });
+    // Noch kein Produkt: erst anlegen, der Eintrag verschwindet danach.
+    else openProductDialog(null, { name: wish.text, wishId: wish.id });
   });
 
   actions.append(drop, bought);
@@ -244,7 +250,14 @@ function renderWishHint(text) {
 
 function renderManual() {
   const entries = pantry.manualList();
+  const done = entries.filter((entry) => entry.wish.done).length;
+
   $('#manual-list').replaceChildren(...entries.map(manualRow));
+  $('#manual-head').hidden = entries.length === 0;
+  $('#manual-empty').hidden = entries.length > 0;
+  $('#clear-done').hidden = done === 0;
+  // Kurz halten: Der Knopf teilt sich die Zeile mit der Überschrift.
+  $('#clear-done').textContent = `Erledigte weg (${done})`;
   return entries.length;
 }
 
@@ -262,20 +275,35 @@ function renderShopping() {
       main.appendChild(el('span', `item-note tone-${tone}`, shoppingReason(item)));
       main.addEventListener('click', () => openDetail(item.product.id));
 
-      const buy = el('button', 'step step-plus', '+');
-      buy.title = 'Gekauft und eingebucht';
-      buy.setAttribute('aria-label', `${item.product.name} einbuchen`);
-      buy.addEventListener('click', () => openStockDialog(item.product));
+      const actions = el('div', 'row-actions');
 
-      row.append(main, buy);
+      // Ablehnen muss möglich sein: Nicht alles, was leer ist, wird auch
+      // nachgekauft. Ohne diesen Knopf stünde es bis zum nächsten Kauf
+      // unverrückbar da und die Vorschläge verlören ihren Wert.
+      const skip = el('button', 'step', '×');
+      skip.title = 'Diesmal nicht';
+      skip.setAttribute('aria-label', `${item.product.name} diesmal nicht`);
+      skip.addEventListener('click', async () => {
+        await pantry.snoozeSuggestion(item.product.id);
+        toast(`${item.product.name}: vorerst kein Vorschlag mehr`, true);
+      });
+
+      const take = el('button', 'chip-button chip-accept', 'Auf die Liste');
+      take.type = 'button';
+      take.addEventListener('click', async () => {
+        await pantry.acceptSuggestion(item.product);
+      });
+
+      actions.append(skip, take);
+      row.append(main, actions);
       return row;
     }),
   );
 
-  const manualCount = renderManual();
-  // Die Überschrift nur zeigen, wenn darunter auch etwas steht.
+  renderManual();
+  // Überschrift und Einleitung nur zeigen, wenn darunter auch etwas steht.
+  $('#auto-head').hidden = items.length === 0;
   $('#auto-intro').hidden = items.length === 0;
-  $('#shopping-empty').hidden = items.length > 0 || manualCount > 0;
 }
 
 function renderExpiry() {
@@ -497,6 +525,8 @@ function openProductDialog(product = null, prefill = {}) {
   $('#product-name').value = product?.name ?? prefill.name ?? '';
   $('#product-min').value = String(product?.minStock ?? 1);
   $('#product-barcode').value = product?.barcode ?? prefill.barcode ?? '';
+  // Fehlt das Feld (Daten aus einer älteren Fassung), gilt "vorschlagen".
+  $('#product-suggest').checked = product ? product.suggest !== false : true;
   // Beim Bearbeiten wäre ein zweites Bestandsfeld neben der Inventur verwirrend.
   $('#product-initial').hidden = !!product;
   $('#product-stock').value = String(prefill.stock ?? 1);
@@ -726,6 +756,18 @@ function wire() {
   // Schon beim Tippen zeigen, ob davon noch etwas da ist -- danach im Laden
   // zu stehen und es erst dort zu merken, hilft niemandem.
   $('#wish-input').addEventListener('input', (e) => renderWishHint(e.target.value));
+
+  $('#clear-done').addEventListener('click', async () => {
+    const count = await pantry.clearDoneWishes();
+    if (count) toast(`${plural(count, 'Eintrag', 'Einträge')} weggeräumt`);
+  });
+
+  // Vor dem Einkauf in einem Zug alles übernehmen, was die App vorschlägt.
+  $('#accept-all').addEventListener('click', async () => {
+    const items = pantry.shoppingList();
+    for (const item of items) await pantry.acceptSuggestion(item.product);
+    if (items.length) toast(`${plural(items.length, 'Vorschlag', 'Vorschläge')} übernommen`);
+  });
   $('#wish-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = $('#wish-input').value.trim();
@@ -764,12 +806,13 @@ function wire() {
     }
     const minStock = Number($('#product-min').value) || 0;
     const barcode = $('#product-barcode').value.trim() || null;
+    const suggest = $('#product-suggest').checked;
 
     if (editingProduct) {
-      await pantry.updateProduct(editingProduct, { name, minStock, barcode });
+      await pantry.updateProduct(editingProduct, { name, minStock, barcode, suggest });
       toast(`${name} gespeichert`);
     } else {
-      const product = await pantry.createProduct({ name, minStock, barcode });
+      const product = await pantry.createProduct({ name, minStock, barcode, suggest });
       const initial = Number($('#product-stock').value) || 0;
       if (initial > 0) await pantry.addStock(product.id, initial, $('#product-bb').value || null);
       if (productWishId) await pantry.removeWish(productWishId);

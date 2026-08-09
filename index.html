@@ -66,13 +66,24 @@
         </form>
         <div id="wish-hint" class="answer" hidden role="status" aria-live="polite"></div>
 
+        <div class="section-head" id="manual-head" hidden>
+          <h2>Einkaufsliste</h2>
+          <button type="button" class="link-button" id="clear-done" hidden>Erledigte weg</button>
+        </div>
         <ul id="manual-list" class="list"></ul>
+        <p id="manual-empty" class="empty-state" hidden>
+          Noch nichts auf der Liste.<br />
+          Oben eintragen oder unten aus den Vorschlägen übernehmen.
+        </p>
 
-        <p class="view-intro" id="auto-intro">
-          Von der App vorgeschlagen, aus Bestand und geschätztem Verbrauch.
+        <div class="section-head" id="auto-head" hidden>
+          <h2>Vorschläge</h2>
+          <button type="button" class="link-button" id="accept-all">Alle übernehmen</button>
+        </div>
+        <p class="view-intro" id="auto-intro" hidden>
+          Aus Bestand und geschätztem Verbrauch. Übernehmen oder ablehnen.
         </p>
         <ul id="shopping-list" class="list"></ul>
-        <p id="shopping-empty" class="empty-state" hidden>Alles da. Nichts einzukaufen.</p>
       </section>
 
       <!-- Ablaufende Chargen -->
@@ -158,6 +169,15 @@
         <label class="field">
           <span>Barcode</span>
           <input id="product-barcode" type="text" inputmode="numeric" autocomplete="off" placeholder="optional" />
+        </label>
+        <label class="switch">
+          <input id="product-suggest" type="checkbox" checked />
+          <span>
+            Zum Nachkaufen vorschlagen
+            <span class="field-hint">
+              Ausschalten für Dinge, die ihr nicht regelmäßig nachkauft.
+            </span>
+          </span>
         </label>
         <div id="product-initial">
           <label class="field">

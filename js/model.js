@@ -141,13 +141,16 @@ export class Pantry {
     return searchProducts(this.products(), query, (product) => stockOf(lots, product.id));
   }
 
-  async createProduct({ name, barcode = null, minStock = 1, note = '' }) {
+  async createProduct({ name, barcode = null, minStock = 1, note = '', suggest = true }) {
     const product = {
       id: newId('p'),
       name: name.trim(),
       barcode: barcode || null,
       minStock: Number(minStock) || 0,
       note,
+      // Ob die App dieses Produkt von sich aus zum Nachkaufen vorschlägt.
+      suggest: suggest !== false,
+      snoozedUntil: null,
       createdAt: new Date().toISOString(),
     };
     await this.store.put('products', product);
@@ -176,12 +179,16 @@ export class Pantry {
     };
   }
 
-  /** Merkt sich die betroffenen Chargen im Zustand *vor* der Änderung. */
-  #snapshot(lotIds, eventIds, label) {
+  /** Merkt sich die betroffenen Datensätze im Zustand *vor* der Änderung. */
+  #snapshot(lotIds, eventIds, label, productIds = []) {
     const lots = this.lots();
     this.#undo = {
       lots: lotIds.map((id) => lots.find((l) => l.id === id)).filter(Boolean).map((l) => ({ ...l })),
       newLotIds: lotIds.filter((id) => !lots.some((l) => l.id === id)),
+      products: productIds
+        .map((id) => this.store.byId('products', id))
+        .filter(Boolean)
+        .map((p) => ({ ...p })),
       eventIds,
       label,
     };
@@ -194,10 +201,11 @@ export class Pantry {
   /** Macht die zuletzt gebuchte Änderung rückgängig. */
   async undo() {
     if (!this.#undo) return false;
-    const { lots, newLotIds, eventIds } = this.#undo;
+    const { lots, newLotIds, products, eventIds } = this.#undo;
     this.#undo = null;
 
     if (lots.length) await this.store.putMany(lots.map((lot) => ['lots', lot]));
+    if (products?.length) await this.store.putMany(products.map((p) => ['products', p]));
     for (const id of newLotIds) await this.store.remove('lots', id);
     for (const id of eventIds) await this.store.remove('events', id);
     return true;
@@ -247,10 +255,14 @@ export class Pantry {
     const event = this.#event(productId, EVENT_TYPES.PURCHASE, total, { lotId: lots[0].id });
     this.#snapshot(lots.map((lot) => lot.id), [event.id], `${total} eingebucht`);
 
-    await this.store.putMany([
-      ...lots.map((lot) => ['lots', lot]),
-      ['events', event],
-    ]);
+    const writes = [...lots.map((lot) => ['lots', lot]), ['events', event]];
+
+    // Ein abgelehnter Vorschlag ist mit dem Kauf erledigt. Bliebe die
+    // Sperre stehen, schwiege die App beim nächsten Leerstand weiter.
+    const product = this.store.byId('products', productId);
+    if (product?.snoozedUntil) writes.push(['products', { ...product, snoozedUntil: null }]);
+
+    await this.store.putMany(writes);
     return lots;
   }
 
@@ -401,12 +413,22 @@ export class Pantry {
    * demnächst ausgeht. Dringendstes zuerst.
    */
   shoppingList(now = new Date()) {
-    // Was bereits von Hand auf der Liste steht, nicht doppelt aufführen.
+    // Was bereits auf der Einkaufsliste steht, nicht doppelt aufführen.
     const noted = new Set(
       this.store.all('wishes').map((wish) => wish.productId).filter(Boolean),
     );
+    const nowIso = now.toISOString();
+
     return this.assessAll(now)
-      .filter((item) => item.need && !noted.has(item.product.id))
+      .filter((item) => {
+        if (!item.need || noted.has(item.product.id)) return false;
+        // Dauerhaft abbestellt (etwa Vorräte, die im Großhandel gekauft
+        // werden und nicht in den Wocheneinkauf gehören).
+        if (item.product.suggest === false) return false;
+        // Vorübergehend abgelehnt: "diesmal nicht".
+        if (item.product.snoozedUntil && item.product.snoozedUntil > nowIso) return false;
+        return true;
+      })
       .sort((a, b) => {
         if (b.need.urgency !== a.need.urgency) return b.need.urgency - a.need.urgency;
         const da = a.projection.daysLeft ?? Infinity;
@@ -443,6 +465,52 @@ export class Pantry {
   }
 
   /**
+   * Einen Eintrag abhaken -- im Laden, wenn er im Wagen liegt.
+   *
+   * Abgehakt heißt nicht eingeräumt: Der Eintrag bleibt stehen, bis zu
+   * Hause eingebucht wird. Sonst wäre die Packung aus der Liste
+   * verschwunden, ohne je im Vorrat anzukommen.
+   */
+  async setWishDone(wishId, done) {
+    const wish = this.store.byId('wishes', wishId);
+    if (!wish) return null;
+    return this.store.put('wishes', { ...wish, done: !!done });
+  }
+
+  /** Räumt alle abgehakten Einträge weg -- nach dem Einkauf. */
+  async clearDoneWishes() {
+    const done = this.store.all('wishes').filter((wish) => wish.done);
+    for (const wish of done) await this.store.remove('wishes', wish.id);
+    return done.length;
+  }
+
+  /**
+   * Einen Vorschlag auf die Einkaufsliste übernehmen.
+   *
+   * Damit wandert er aus den Vorschlägen heraus -- `shoppingList()` lässt
+   * alles weg, was bereits notiert ist.
+   */
+  async acceptSuggestion(product) {
+    return this.addWish(product.name, product.id);
+  }
+
+  /**
+   * Einen Vorschlag vorerst ablehnen: "brauchen wir diesmal nicht".
+   *
+   * Nicht jedes leere Produkt wird sofort nachgekauft. Ohne diese
+   * Möglichkeit stünde es bis zum nächsten Kauf unverrückbar auf der
+   * Liste und die Vorschläge würden mit der Zeit wertlos.
+   */
+  async snoozeSuggestion(productId, days = 30) {
+    const product = this.store.byId('products', productId);
+    if (!product) return null;
+
+    const until = new Date(Date.now() + days * DAY_MS).toISOString();
+    this.#snapshot([], [], 'Vorschlag abgelehnt', [productId]);
+    return this.store.put('products', { ...product, snoozedUntil: until });
+  }
+
+  /**
    * Die von Hand notierten Einträge, mit dem, was die App über den
    * jeweiligen Bestand weiß.
    *
@@ -452,7 +520,11 @@ export class Pantry {
     const lots = this.lots();
     return this.store
       .all('wishes')
-      .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
+      .sort((a, b) => {
+        // Erledigtes nach unten, damit oben steht, was noch zu holen ist.
+        if (!!a.done !== !!b.done) return a.done ? 1 : -1;
+        return (a.createdAt ?? '').localeCompare(b.createdAt ?? '');
+      })
       .map((wish) => {
         const product = wish.productId ? this.store.byId('products', wish.productId) : null;
         return {

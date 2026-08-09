@@ -13,9 +13,10 @@ lässt sie sich zum Startbildschirm hinzufügen und verhält sich dann wie eine 
   weggeht, und rechnet daraus aus, wann der Vorrat voraussichtlich leer ist.
 - **Nachschlagen** — „Haben wir noch …?" beantwortet die App direkt mit *Ja,
   3 da* oder *Nein, leer*. Sie verzeiht dabei Tippfehler und fehlende Umlaute.
-- **Einkaufsliste** — füllt sich automatisch mit allem, was leer ist, unter dem
-  Mindestbestand liegt oder demnächst ausgeht; eigene Einträge lassen sich
-  dazuschreiben. Steht davon laut Vorrat noch etwas da, sagt die Liste das.
+- **Einkaufsliste** — eine echte Liste zum Abhaken, getrennt von den
+  Vorschlägen der App. Übernommen wird, was ihr wirklich kauft; der Rest
+  lässt sich ablehnen. Steht von etwas laut Vorrat noch was da, sagt die
+  Liste das.
 - **Mindesthaltbarkeit** — wird bei jedem Einbuchen abgefragt. Liegen mehrere
   Packungen im Schrank, darf jede ihr eigenes Datum haben; die App warnt
   rechtzeitig und verbraucht immer zuerst, was zuerst abläuft.
@@ -144,11 +145,40 @@ ab vier Zeichen werden kleine Tippfehler verziehen (`jogurt` findet
 `Joghurt`). Darunter wird bewusst nicht geraten: Bei drei Buchstaben passt
 sonst alles auf alles. Ein eingetippter Barcode zählt als voller Treffer.
 
-### Eigene Einträge
+### Zwei Listen, absichtlich getrennt
 
-Über das Feld **„Was fehlt noch?"** kommt alles auf die Liste, woran ihr
-sonst nicht denkt — auch Dinge, die im Vorrat gar nicht geführt werden
-(Alufolie, Blumen).
+Der Reiter *Einkauf* zeigt zwei Abschnitte, weil es zwei verschiedene Dinge
+sind:
+
+**Einkaufsliste** — was ihr tatsächlich kauft. Sie entsteht nur durch eure
+Entscheidung: über das Feld **„Was fehlt noch?"** oder durch Übernehmen eines
+Vorschlags.
+
+- **Antippen** hakt einen Eintrag ab (durchgestrichen, rutscht ans Ende) —
+  die Geste für den Laden. Abhaken bucht bewusst noch nichts ein: Im Wagen
+  liegen heißt nicht im Schrank stehen.
+- **`+`** bucht ein, samt Haltbarkeitsdatum — der Schritt für zu Hause. Der
+  Eintrag verschwindet danach.
+- **`×`** nimmt den Eintrag von der Liste.
+- **„Erledigte weg"** räumt alle Abgehakten auf einmal ab.
+
+**Vorschläge** — was die App aus Bestand und Verbrauch für nötig hält. Ein
+Vorschlag ist eine Vermutung, keine Entscheidung, und lässt sich deshalb
+beides:
+
+- **„Auf die Liste"** übernimmt ihn (er verschwindet aus den Vorschlägen,
+  damit nichts doppelt dasteht). **„Alle übernehmen"** macht das für den
+  ganzen Abschnitt.
+- **`×`** lehnt ihn ab: 30 Tage Ruhe. Denn nicht alles, was leer ist, wird
+  auch nachgekauft — ohne diese Möglichkeit stünde es bis zum nächsten Kauf
+  unverrückbar da und die Vorschläge würden mit der Zeit wertlos. Wird das
+  Produkt zwischenzeitlich gekauft, ist die Ablehnung hinfällig.
+
+Für Dinge, die grundsätzlich nicht in den Wocheneinkauf gehören, gibt es im
+Produktdialog den Schalter **„Zum Nachkaufen vorschlagen"** — dauerhaft statt
+nur für 30 Tage.
+
+### Wenn die App sich irrt
 
 Passt ein Eintrag zu einem erfassten Produkt, verknüpft die App beides. Ist
 davon noch etwas da, steht es schon beim Tippen und danach in der Zeile:
@@ -158,10 +188,6 @@ sitzt daneben der Knopf **„Ist leer"** — der setzt den Bestand auf null.
 Als Korrektur gebucht, nicht als Verbrauch: Eine falsche Zahl zu berichtigen
 sagt nichts darüber aus, wie schnell etwas weggeht, und darf die Prognose
 nicht verzerren.
-
-Selbst Notiertes verdrängt den automatischen Vorschlag für dasselbe Produkt,
-damit nichts doppelt auf der Liste steht. Mit `+` wird eingebucht (samt
-Haltbarkeitsdatum), und der Eintrag verschwindet.
 
 ## Haltbarkeit und Chargen
 
