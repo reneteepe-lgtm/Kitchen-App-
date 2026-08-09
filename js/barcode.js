@@ -234,15 +234,27 @@ export function suggestProduct(hit) {
 
   const clean = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
   const brand = clean(hit.brand);
-  let name = clean([hit.name, hit.quantity].filter(Boolean).join(' '));
-
-  // Manche Einträge wiederholen die Marke im Produktnamen ("Baresa Baresa
-  // Passata"). Einmal reicht, und zwar oben.
-  if (brand && name.toLowerCase().startsWith(brand.toLowerCase())) {
-    name = clean(name.slice(brand.length));
-  }
+  const name = stripBrand(clean([hit.name, hit.quantity].filter(Boolean).join(' ')), brand);
 
   // Ohne Bezeichnung ist die Marke besser als gar nichts.
   if (!name) return { name: brand, brand: '' };
   return { name, brand };
+}
+
+/**
+ * Trennt eine vorangestellte Marke vom Namen ab.
+ *
+ * Zwei Fälle brauchen das: Manche Datenbankeinträge wiederholen die Marke
+ * im Produktnamen ("Baresa Baresa Passata"), und Produkte aus früheren
+ * Fassungen der App tragen sie fest im Namen ("Baresa Tomaten passiert"),
+ * weil es damals kein eigenes Feld dafür gab.
+ */
+export function stripBrand(name, brand) {
+  const text = String(name ?? '').replace(/\s+/g, ' ').trim();
+  const mark = String(brand ?? '').trim();
+  if (!mark || !text.toLowerCase().startsWith(mark.toLowerCase())) return text;
+
+  const rest = text.slice(mark.length).trim();
+  // Nicht abtrennen, wenn danach nichts übrig bleibt.
+  return rest || text;
 }

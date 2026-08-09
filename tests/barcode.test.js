@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { suggestProduct, isNativeScanSupported, ZBAR_TYPES } from '../js/barcode.js';
+import { suggestProduct, stripBrand, isNativeScanSupported, ZBAR_TYPES } from '../js/barcode.js';
 
 const VENDOR = new URL('../vendor/zbar-wasm/zbar-wasm.mjs', import.meta.url);
 
@@ -43,6 +43,25 @@ test('ohne Marke bleibt nur die Bezeichnung', () => {
     name: 'Passata',
   });
   assert.deepEqual(suggestProduct(null), { brand: '', name: '' });
+});
+
+test('eine vorangestellte Marke lässt sich vom Namen abtrennen', () => {
+  // Produkte aus früheren Fassungen tragen die Marke fest im Namen.
+  assert.equal(stripBrand('Baresa Tomaten passiert 500 g', 'Baresa'), 'Tomaten passiert 500 g');
+  assert.equal(stripBrand('BARESA Passata', 'baresa'), 'Passata', 'Schreibweise egal');
+  assert.equal(stripBrand('  Mutti   Passata  ', 'Mutti'), 'Passata');
+});
+
+test('abgetrennt wird nur, was wirklich vorne steht', () => {
+  assert.equal(stripBrand('Tomaten passiert Baresa', 'Baresa'), 'Tomaten passiert Baresa');
+  assert.equal(stripBrand('Passata', 'Mutti'), 'Passata');
+});
+
+test('der Name wird nie ganz aufgezehrt', () => {
+  // Sonst stünde eine leere Zeile im Vorrat.
+  assert.equal(stripBrand('Baresa', 'Baresa'), 'Baresa');
+  assert.equal(stripBrand('Passata', ''), 'Passata');
+  assert.equal(stripBrand('', 'Baresa'), '');
 });
 
 test('ohne BarcodeDetector im Browser meldet die App keine native Erkennung', () => {

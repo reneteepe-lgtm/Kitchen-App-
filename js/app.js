@@ -8,7 +8,7 @@
 
 import { Store, LocalStorageAdapter } from './storage.js';
 import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.js';
-import { BarcodeScanner, isScanSupported, lookupBarcode, suggestProduct } from './barcode.js';
+import { BarcodeScanner, isScanSupported, lookupBarcode, stripBrand, suggestProduct } from './barcode.js';
 import { stockAnswer } from './search.js';
 import {
   CATEGORIES,
@@ -33,7 +33,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.7.0';
+export const APP_VERSION = '1.7.1';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -59,6 +59,7 @@ function render() {
   renderExpiry();
   renderBadges();
   renderStats();
+  renderBackfill();
   // Die Detailansicht ist ein eigener Dialog, der über der Liste liegt.
   // Ohne diesen Aufruf zeigte sie nach einer Änderung weiter den Stand von
   // vor dem Öffnen -- man ändert eine Haltbarkeit und sieht das alte Datum.
@@ -824,6 +825,63 @@ async function handleScan(barcode, hint) {
   if (!hit) toast('Produkt nicht in der Datenbank — bitte Namen eintragen');
 }
 
+// --- Marken nachtragen ----------------------------------------------------
+
+/**
+ * Produkte, denen die Marke fehlt, obwohl ein Barcode vorliegt.
+ *
+ * Alles, was vor Einführung des Markenfelds gescannt wurde, trägt sie
+ * fest im Namen ("Baresa Tomaten passiert"). Ohne diesen Weg müsste man
+ * jedes Produkt von Hand aufteilen.
+ */
+function backfillCandidates() {
+  return pantry.products().filter((product) => product.barcode && !product.brand);
+}
+
+function renderBackfill() {
+  const candidates = backfillCandidates();
+  $('#backfill-card').hidden = candidates.length === 0;
+  if (candidates.length) {
+    $('#backfill-info').textContent =
+      `${plural(candidates.length, 'Produkt hat', 'Produkte haben')} einen Barcode, aber keine Marke.`;
+  }
+}
+
+async function backfillBrands() {
+  const candidates = backfillCandidates();
+  if (!candidates.length) return;
+
+  const button = $('#btn-backfill');
+  button.disabled = true;
+  let updated = 0;
+
+  try {
+    for (const [index, product] of candidates.entries()) {
+      button.textContent = `Suche… (${index + 1}/${candidates.length})`;
+      const hit = await lookupBarcode(product.barcode);
+      const brand = hit?.brand?.trim();
+      if (!brand) continue;
+
+      // Nur ergänzen, nie ersetzen: Der Name behält alles außer der
+      // vorangestellten Marke, damit eigene Zusätze erhalten bleiben.
+      await pantry.updateProduct(product, {
+        brand,
+        name: stripBrand(product.name, brand),
+      });
+      updated += 1;
+    }
+
+    toast(
+      updated
+        ? `${plural(updated, 'Marke', 'Marken')} nachgetragen`
+        : 'Keine Marken gefunden — bitte von Hand eintragen',
+    );
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Jetzt nachtragen';
+  }
+}
+
 // --- Datensicherung -------------------------------------------------------
 
 function exportBackup() {
@@ -1002,6 +1060,7 @@ function wire() {
     store.setSetting('expiryWarnDays', Math.max(0, Number(e.target.value) || 0));
   });
 
+  $('#btn-backfill').addEventListener('click', backfillBrands);
   $('#btn-export').addEventListener('click', exportBackup);
   $('#btn-import').addEventListener('click', () => $('#import-file').click());
   $('#import-file').addEventListener('change', async (e) => {

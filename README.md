@@ -215,6 +215,18 @@ Drei Dinge hängen mit daran:
 
 Nachtragen oder ändern lässt sich die Marke jederzeit im Produktdialog.
 
+### Produkte aus früheren Fassungen
+
+Alles, was gescannt wurde, bevor es das Markenfeld gab, trägt die Marke fest
+im Namen („Baresa Tomaten passiert 500 g") und hat kein eigenes Feld — die
+Anzeige findet dort nichts zum Hochsetzen.
+
+Für diese Fälle erscheint unter **Mehr** ein Abschnitt *Marken nachtragen*.
+Er ist nur sichtbar, solange es Produkte mit Barcode und ohne Marke gibt,
+schlägt sie über den Barcode nach und trennt sie vom Namen ab. Angefasst
+wird nur, was beides erfüllt: Von Hand angelegte Produkte ohne Barcode und
+solche mit bereits gesetzter Marke bleiben unberührt.
+
 ## Nachschlagen und Einkaufsliste
 
 ### „Haben wir noch …?"
