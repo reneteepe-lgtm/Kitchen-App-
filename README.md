@@ -11,8 +11,11 @@ lässt sie sich zum Startbildschirm hinzufügen und verhält sich dann wie eine 
 - **Vorrat sehen** — alle Produkte mit Bestand in Packungen, auf einen Blick.
 - **Verbrauch lernen** — aus jeder Buchung schätzt die App, wie schnell etwas
   weggeht, und rechnet daraus aus, wann der Vorrat voraussichtlich leer ist.
+- **Nachschlagen** — „Haben wir noch …?" beantwortet die App direkt mit *Ja,
+  3 da* oder *Nein, leer*. Sie verzeiht dabei Tippfehler und fehlende Umlaute.
 - **Einkaufsliste** — füllt sich automatisch mit allem, was leer ist, unter dem
-  Mindestbestand liegt oder demnächst ausgeht.
+  Mindestbestand liegt oder demnächst ausgeht; eigene Einträge lassen sich
+  dazuschreiben. Steht davon laut Vorrat noch etwas da, sagt die Liste das.
 - **Mindesthaltbarkeit** — wird bei jedem Einbuchen abgefragt. Liegen mehrere
   Packungen im Schrank, darf jede ihr eigenes Datum haben; die App warnt
   rechtzeitig und verbraucht immer zuerst, was zuerst abläuft.
@@ -123,6 +126,43 @@ Zwei Feinheiten, die im Alltag den Unterschied machen:
   Aussage darüber, wie schnell etwas weggeht, und darf die Prognose nicht
   verfälschen.
 
+## Nachschlagen und Einkaufsliste
+
+### „Haben wir noch …?"
+
+Das Suchfeld im Vorrat beantwortet diese Frage als Satz, nicht als Liste —
+denn eine leere Trefferliste sieht genauso aus wie „gibt es nicht", und im
+Laden ist das ein wichtiger Unterschied:
+
+- **Ja — 3 da**
+- **Nein — nichts mehr da** (erfasst, aber leer)
+- **Nicht im Vorrat** (nie erfasst) — mit Knopf zum direkten Anlegen
+
+Gesucht wird in drei Stufen, von genau nach großzügig. Umlaute muss man nicht
+tippen (`muesli` findet `Müsli`, `creme fraiche` findet `Crème fraîche`), und
+ab vier Zeichen werden kleine Tippfehler verziehen (`jogurt` findet
+`Joghurt`). Darunter wird bewusst nicht geraten: Bei drei Buchstaben passt
+sonst alles auf alles. Ein eingetippter Barcode zählt als voller Treffer.
+
+### Eigene Einträge
+
+Über das Feld **„Was fehlt noch?"** kommt alles auf die Liste, woran ihr
+sonst nicht denkt — auch Dinge, die im Vorrat gar nicht geführt werden
+(Alufolie, Blumen).
+
+Passt ein Eintrag zu einem erfassten Produkt, verknüpft die App beides. Ist
+davon noch etwas da, steht es schon beim Tippen und danach in der Zeile:
+*„Laut Vorrat noch 5 da"*. Weil im Zweifel ihr recht habt und nicht die App,
+sitzt daneben der Knopf **„Ist leer"** — der setzt den Bestand auf null.
+
+Als Korrektur gebucht, nicht als Verbrauch: Eine falsche Zahl zu berichtigen
+sagt nichts darüber aus, wie schnell etwas weggeht, und darf die Prognose
+nicht verzerren.
+
+Selbst Notiertes verdrängt den automatischen Vorschlag für dasselbe Produkt,
+damit nichts doppelt auf der Liste steht. Mit `+` wird eingebucht (samt
+Haltbarkeitsdatum), und der Eintrag verschwindet.
+
 ## Haltbarkeit und Chargen
 
 Der Bestand hängt nicht am Produkt, sondern an **Chargen**. Eine Charge ist
@@ -184,6 +224,7 @@ js/forecast.js      Verbrauchsschätzung und Reichweite
 js/model.js         Produkte, Chargen, Buchungen
 js/storage.js       Persistenz, austauschbar für späteren Sync
 js/barcode.js       Kamera-Scan und Produktdatenbank
+js/search.js        Nachsichtige Suche und die Antwort "haben wir das?"
 js/format.js        Aufbereitung der Zahlen für die Anzeige
 js/app.js           Verdrahtung von Daten und Oberfläche
 vendor/zbar-wasm/   Barcode-Erkennung für iOS (LGPL, siehe Ordner-README)

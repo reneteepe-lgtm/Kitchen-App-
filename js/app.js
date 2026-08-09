@@ -9,6 +9,7 @@
 import { Store, LocalStorageAdapter } from './storage.js';
 import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.js';
 import { BarcodeScanner, isScanSupported, lookupBarcode, suggestName } from './barcode.js';
+import { stockAnswer } from './search.js';
 import {
   describeForecast,
   describeRate,
@@ -24,7 +25,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -54,11 +55,6 @@ function render() {
   // Ohne diesen Aufruf zeigte sie nach einer Änderung weiter den Stand von
   // vor dem Öffnen -- man ändert eine Haltbarkeit und sieht das alte Datum.
   if (detailProductId) renderDetail(detailProductId);
-}
-
-function matchesSearch(product) {
-  if (!searchTerm) return true;
-  return product.name.toLowerCase().includes(searchTerm);
 }
 
 /** Eine Zeile mit Bestand, Prognose und den beiden Buchungsknöpfen. */
@@ -100,16 +96,57 @@ function pantryRow(assessment) {
 
 function renderPantry() {
   const list = $('#pantry-list');
-  const items = pantry.assessAll().filter((a) => matchesSearch(a.product));
+  const searching = searchTerm.length > 0;
+
+  // Bei einer Suche bestimmt die Trefferqualität die Reihenfolge, sonst
+  // bleibt die Liste alphabetisch.
+  const items = searching
+    ? pantry.search(searchTerm).map((match) => pantry.assess(match.product))
+    : pantry.assessAll();
 
   list.replaceChildren(...items.map(pantryRow));
-  $('#pantry-empty').hidden = items.length > 0;
-  if (searchTerm && items.length === 0) {
-    $('#pantry-empty').textContent = 'Nichts gefunden.';
-  } else {
-    $('#pantry-empty').innerHTML =
-      'Noch nichts erfasst.<br />Leg oben rechts das erste Produkt an oder scanne einen Barcode.';
+  renderSearchAnswer(searching ? pantry.search(searchTerm) : null);
+
+  $('#pantry-empty').hidden = items.length > 0 || searching;
+  $('#pantry-empty').innerHTML =
+    'Noch nichts erfasst.<br />Leg oben rechts das erste Produkt an oder scanne einen Barcode.';
+}
+
+/**
+ * Beantwortet die Frage, die man beim Suchen tatsächlich hat: Haben wir das
+ * noch? Eine Liste allein beantwortet sie nicht -- schon gar nicht die
+ * leere Liste, die genauso aussieht wie "gibt es nicht".
+ */
+function renderSearchAnswer(matches) {
+  const box = $('#search-answer');
+  if (!matches) {
+    box.hidden = true;
+    return;
   }
+
+  const answer = stockAnswer(matches);
+  box.replaceChildren();
+  box.hidden = false;
+  box.className = `answer answer-${answer.kind}`;
+
+  if (answer.kind === 'have') {
+    box.appendChild(el('strong', null, `Ja — ${answer.stock} da`));
+    box.appendChild(el('span', null, answer.product.name));
+    return;
+  }
+
+  if (answer.kind === 'empty') {
+    box.appendChild(el('strong', null, 'Nein — nichts mehr da'));
+    box.appendChild(el('span', null, `${answer.product.name} ist erfasst, aber leer`));
+    return;
+  }
+
+  box.appendChild(el('strong', null, 'Nicht im Vorrat'));
+  box.appendChild(el('span', null, `„${searchTerm}“ ist hier nirgends erfasst`));
+  const add = el('button', 'button answer-action', 'Anlegen');
+  add.type = 'button';
+  add.addEventListener('click', () => openProductDialog(null, { name: searchTerm }));
+  box.appendChild(add);
 }
 
 /** Warum steht das hier? In einem Satz, den man im Laden versteht. */
@@ -124,6 +161,91 @@ function shoppingReason(item) {
         ? `${item.stock} vorhanden`
         : `reicht noch ${humanDuration(item.projection.daysLeft)} — ${item.stock} vorhanden`;
   }
+}
+
+/**
+ * Ein selbst notierter Eintrag.
+ *
+ * Steht laut Vorrat noch etwas davon da, sagt die Zeile das deutlich --
+ * und bietet gleich an, den Bestand zu berichtigen. Denn wer im Laden
+ * steht, weiß es besser als die App.
+ */
+function manualRow({ wish, product, stock }) {
+  const row = el('li', 'item');
+  const main = el('button', 'item-main');
+  main.appendChild(el('span', 'item-name', wish.text));
+
+  if (product && stock > 0) {
+    main.appendChild(el('span', 'item-note tone-warn', `Laut Vorrat noch ${stock} da`));
+    main.addEventListener('click', () => openDetail(product.id));
+  } else {
+    main.appendChild(el('span', 'item-note tone-empty', product ? 'nichts mehr da' : 'nur notiert'));
+    if (product) main.addEventListener('click', () => openDetail(product.id));
+  }
+
+  const actions = el('div', 'row-actions');
+
+  if (product && stock > 0) {
+    // Genau der Fall, den die App nicht selbst entscheiden kann: Die Zahl
+    // stimmt nicht. Als Korrektur gebucht, damit die Prognose sauber bleibt.
+    const fix = el('button', 'chip-button', 'Ist leer');
+    fix.type = 'button';
+    fix.title = 'Bestand auf null setzen';
+    fix.addEventListener('click', async () => {
+      await pantry.setStock(product.id, 0);
+      toast(`${product.name}: Bestand auf 0 gesetzt`, true);
+    });
+    actions.appendChild(fix);
+  }
+
+  const bought = el('button', 'step step-plus', '+');
+  bought.title = 'Gekauft';
+  bought.setAttribute('aria-label', `${wish.text} gekauft`);
+  bought.addEventListener('click', async () => {
+    if (product) openStockDialog(product, { wishId: wish.id });
+    // Noch kein Produkt: erst anlegen, der Eintrag verschwindet danach.
+    else openProductDialog(null, { name: wish.text, wishId: wish.id });
+  });
+
+  const drop = el('button', 'step', '×');
+  drop.title = 'Von der Liste nehmen';
+  drop.setAttribute('aria-label', `${wish.text} von der Liste nehmen`);
+  drop.addEventListener('click', async () => {
+    await pantry.removeWish(wish.id);
+  });
+
+  actions.append(drop, bought);
+  row.append(main, actions);
+  return row;
+}
+
+/** Rückmeldung beim Tippen in der Einkaufsliste. */
+function renderWishHint(text) {
+  const box = $('#wish-hint');
+  const query = text.trim();
+  if (query.length < 2) {
+    box.hidden = true;
+    return;
+  }
+
+  const answer = stockAnswer(pantry.search(query));
+  if (answer.kind !== 'have') {
+    box.hidden = true;
+    return;
+  }
+
+  box.hidden = false;
+  box.className = 'answer answer-warn';
+  box.replaceChildren(
+    el('strong', null, `${answer.product.name}: noch ${answer.stock} da`),
+    el('span', null, 'Trotzdem notieren? Dann einfach bestätigen.'),
+  );
+}
+
+function renderManual() {
+  const entries = pantry.manualList();
+  $('#manual-list').replaceChildren(...entries.map(manualRow));
+  return entries.length;
 }
 
 function renderShopping() {
@@ -149,7 +271,11 @@ function renderShopping() {
       return row;
     }),
   );
-  $('#shopping-empty').hidden = items.length > 0;
+
+  const manualCount = renderManual();
+  // Die Überschrift nur zeigen, wenn darunter auch etwas steht.
+  $('#auto-intro').hidden = items.length === 0;
+  $('#shopping-empty').hidden = items.length > 0 || manualCount > 0;
 }
 
 function renderExpiry() {
@@ -188,7 +314,8 @@ function renderExpiry() {
 }
 
 function renderBadges() {
-  const shopping = pantry.shoppingList().length;
+  // Alles, was einzukaufen ist -- Vorschläge und selbst Notiertes.
+  const shopping = pantry.shoppingList().length + pantry.manualList().length;
   const expiry = pantry.expiringSoon().length;
 
   const badgeShopping = $('#badge-shopping');
@@ -360,9 +487,12 @@ function renderDetail(productId) {
 // --- Dialoge --------------------------------------------------------------
 
 let editingProduct = null;
+/** Einkaufslisten-Eintrag, der mit dem Anlegen erledigt ist. */
+let productWishId = null;
 
 function openProductDialog(product = null, prefill = {}) {
   editingProduct = product;
+  productWishId = prefill.wishId ?? null;
   $('#product-title').textContent = product ? 'Produkt bearbeiten' : 'Produkt anlegen';
   $('#product-name').value = product?.name ?? prefill.name ?? '';
   $('#product-min').value = String(product?.minStock ?? 1);
@@ -398,10 +528,13 @@ function openLotDialog(product, lot) {
 let stockTarget = null;
 /** Ob der Einbuch-Dialog aus dem Scanner heraus geöffnet wurde. */
 let stockFromScan = false;
+/** Der Einkaufslisten-Eintrag, der mit dem Einbuchen erledigt ist. */
+let stockWishId = null;
 
-function openStockDialog(product, { fromScan = false } = {}) {
+function openStockDialog(product, { fromScan = false, wishId = null } = {}) {
   stockTarget = product;
   stockFromScan = fromScan;
+  stockWishId = wishId;
   $('#stock-title').textContent = `${product.name} einbuchen`;
   $('#stock-qty').value = '1';
   $('#stock-bb').value = '';
@@ -463,8 +596,12 @@ async function submitStockDialog() {
   const total = batches.reduce((sum, b) => sum + b.qty, 0);
 
   await pantry.addStockBatches(product.id, batches);
+  // Gekauft und eingeräumt: Der Eintrag auf der Einkaufsliste hat sich erledigt.
+  if (stockWishId) await pantry.removeWish(stockWishId);
+
   toast(`${product.name}: ${total} eingebucht`, true);
   stockTarget = null;
+  stockWishId = null;
 }
 
 function toast(message, undoable = false) {
@@ -582,8 +719,24 @@ function wire() {
   }
 
   $('#search').addEventListener('input', (e) => {
-    searchTerm = e.target.value.trim().toLowerCase();
+    searchTerm = e.target.value.trim();
     renderPantry();
+  });
+
+  // Schon beim Tippen zeigen, ob davon noch etwas da ist -- danach im Laden
+  // zu stehen und es erst dort zu merken, hilft niemandem.
+  $('#wish-input').addEventListener('input', (e) => renderWishHint(e.target.value));
+  $('#wish-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = $('#wish-input').value.trim();
+    if (!text) return;
+
+    // Den besten Treffer verknüpfen, damit die Zeile den Bestand kennt.
+    const [best] = pantry.search(text);
+    await pantry.addWish(text, best?.product.id ?? null);
+
+    $('#wish-input').value = '';
+    renderWishHint('');
   });
 
   $('#btn-add').addEventListener('click', () => openProductDialog());
@@ -619,9 +772,11 @@ function wire() {
       const product = await pantry.createProduct({ name, minStock, barcode });
       const initial = Number($('#product-stock').value) || 0;
       if (initial > 0) await pantry.addStock(product.id, initial, $('#product-bb').value || null);
+      if (productWishId) await pantry.removeWish(productWishId);
       toast(`${name} angelegt`);
     }
     editingProduct = null;
+    productWishId = null;
   });
 
   $('#stock-qty').addEventListener('input', syncStockDialog);

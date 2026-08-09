@@ -214,6 +214,85 @@ main {
   list-style: none;
 }
 
+.list:empty {
+  display: none;
+}
+
+/* Die Antwort auf "haben wir das noch?" */
+.answer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border-left: 4px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.answer strong {
+  font-size: 1.05rem;
+}
+
+.answer span {
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+.answer-have {
+  border-left-color: var(--ok);
+}
+.answer-have strong {
+  color: var(--ok);
+}
+
+.answer-empty {
+  border-left-color: var(--urgent);
+}
+.answer-empty strong {
+  color: var(--urgent);
+}
+
+.answer-unknown {
+  border-left-color: var(--empty);
+}
+
+.answer-warn {
+  border-left-color: var(--soon);
+}
+.answer-warn strong {
+  color: var(--soon);
+}
+
+.answer-action {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: 10px;
+  padding: 0 18px;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.chip-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .item {
   display: flex;
   align-items: center;
@@ -255,6 +334,7 @@ main {
 .item-note.tone-soon { color: var(--soon); }
 .item-note.tone-urgent { color: var(--urgent); font-weight: 600; }
 .item-note.tone-empty { color: var(--empty); }
+.item-note.tone-warn { color: var(--soon); font-weight: 600; }
 
 .stock-chip {
   min-width: 34px;

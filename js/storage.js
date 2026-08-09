@@ -17,12 +17,14 @@
  *     Ereignislisten lassen sich dadurch konfliktfrei vereinigen.
  */
 
-export const COLLECTIONS = ['products', 'lots', 'events'];
+export const COLLECTIONS = ['products', 'lots', 'events', 'wishes'];
 
 const emptyState = () => ({
   products: {},
   lots: {},
   events: {},
+  // Von Hand auf die Einkaufsliste geschriebene Einträge.
+  wishes: {},
   settings: {},
 });
 

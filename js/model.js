@@ -10,6 +10,7 @@
 
 import { newId } from './storage.js';
 import { assessProduct, DAY_MS } from './forecast.js';
+import { searchProducts } from './search.js';
 
 export const EVENT_TYPES = {
   PURCHASE: 'purchase',
@@ -132,6 +133,12 @@ export class Pantry {
   findByBarcode(barcode) {
     if (!barcode) return undefined;
     return this.products().find((p) => p.barcode === barcode);
+  }
+
+  /** Sucht im Vorrat -- nachsichtig gegenüber Schreibweise und Tippfehlern. */
+  search(query) {
+    const lots = this.lots();
+    return searchProducts(this.products(), query, (product) => stockOf(lots, product.id));
   }
 
   async createProduct({ name, barcode = null, minStock = 1, note = '' }) {
@@ -394,13 +401,65 @@ export class Pantry {
    * demnächst ausgeht. Dringendstes zuerst.
    */
   shoppingList(now = new Date()) {
+    // Was bereits von Hand auf der Liste steht, nicht doppelt aufführen.
+    const noted = new Set(
+      this.store.all('wishes').map((wish) => wish.productId).filter(Boolean),
+    );
     return this.assessAll(now)
-      .filter((item) => item.need)
+      .filter((item) => item.need && !noted.has(item.product.id))
       .sort((a, b) => {
         if (b.need.urgency !== a.need.urgency) return b.need.urgency - a.need.urgency;
         const da = a.projection.daysLeft ?? Infinity;
         const db = b.projection.daysLeft ?? Infinity;
         return da - db;
+      });
+  }
+
+  // --- Von Hand notierte Einkäufe ---------------------------------------
+
+  /**
+   * Etwas auf die Einkaufsliste schreiben.
+   *
+   * Wird ein passendes Produkt im Vorrat gefunden, merkt sich der Eintrag
+   * dessen Kennung. Nur so kann die Liste später sagen "davon ist noch
+   * etwas da" -- und genau das ist der Zweck der Verknüpfung.
+   */
+  async addWish(text, productId = null) {
+    const label = String(text ?? '').trim();
+    if (!label) return null;
+
+    const wish = {
+      id: newId('w'),
+      text: label,
+      productId: productId ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    await this.store.put('wishes', wish);
+    return wish;
+  }
+
+  async removeWish(wishId) {
+    await this.store.remove('wishes', wishId);
+  }
+
+  /**
+   * Die von Hand notierten Einträge, mit dem, was die App über den
+   * jeweiligen Bestand weiß.
+   *
+   * @returns {Array<{wish:object, product:object|null, stock:number}>}
+   */
+  manualList() {
+    const lots = this.lots();
+    return this.store
+      .all('wishes')
+      .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
+      .map((wish) => {
+        const product = wish.productId ? this.store.byId('products', wish.productId) : null;
+        return {
+          wish,
+          product: product ?? null,
+          stock: product ? stockOf(lots, product.id) : 0,
+        };
       });
   }
 

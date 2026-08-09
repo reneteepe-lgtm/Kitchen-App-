@@ -38,8 +38,15 @@
       <!-- Vorrat -->
       <section id="view-pantry" class="view">
         <div class="search-row">
-          <input id="search" type="search" placeholder="Suchen…" autocomplete="off" aria-label="Vorrat durchsuchen" />
+          <input
+            id="search"
+            type="search"
+            placeholder="Haben wir noch …?"
+            autocomplete="off"
+            aria-label="Vorrat durchsuchen"
+          />
         </div>
+        <div id="search-answer" class="answer" hidden role="status" aria-live="polite"></div>
         <ul id="pantry-list" class="list"></ul>
         <p id="pantry-empty" class="empty-state" hidden>
           Noch nichts erfasst.<br />
@@ -49,8 +56,20 @@
 
       <!-- Einkaufsliste -->
       <section id="view-shopping" class="view" hidden>
-        <p class="view-intro">
-          Automatisch aus Bestand und geschätztem Verbrauch. Angehakt wird direkt eingebucht.
+        <form id="wish-form" class="search-row" autocomplete="off">
+          <input
+            id="wish-input"
+            type="text"
+            placeholder="Was fehlt noch?"
+            aria-label="Auf die Einkaufsliste schreiben"
+          />
+        </form>
+        <div id="wish-hint" class="answer" hidden role="status" aria-live="polite"></div>
+
+        <ul id="manual-list" class="list"></ul>
+
+        <p class="view-intro" id="auto-intro">
+          Von der App vorgeschlagen, aus Bestand und geschätztem Verbrauch.
         </p>
         <ul id="shopping-list" class="list"></ul>
         <p id="shopping-empty" class="empty-state" hidden>Alles da. Nichts einzukaufen.</p>
