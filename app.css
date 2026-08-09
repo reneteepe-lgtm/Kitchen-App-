@@ -344,6 +344,33 @@ main {
   color: var(--accent-text);
 }
 
+/* Stückzahl auf der Einkaufsliste -- antippbar */
+.qty-chip {
+  min-width: 40px;
+  min-height: var(--tap);
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* Ab zwei fällt die Zahl auf: Genau dann muss man sie im Laden lesen. */
+.qty-chip.is-many {
+  border-color: transparent;
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.item.is-done .qty-chip {
+  opacity: 0.6;
+}
+
 /* Überschrift eines Listenabschnitts, rechts eine Aktion */
 .section-head {
   display: flex;

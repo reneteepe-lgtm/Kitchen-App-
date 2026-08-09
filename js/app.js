@@ -33,7 +33,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.8.0';
+export const APP_VERSION = '1.9.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -228,6 +228,17 @@ function manualRow({ wish, product, stock }) {
 
   const actions = el('div', 'row-actions');
 
+  // Wie viele mitzubringen sind. Antippen zählt hoch und springt nach neun
+  // wieder auf eins -- ein Dialog für eine einstellige Zahl wäre im Laden
+  // umständlicher als ein zweiter Tipp.
+  const qty = wish.qty ?? 1;
+  const qtyChip = el('button', `qty-chip${qty > 1 ? ' is-many' : ''}`, `${qty}×`);
+  qtyChip.type = 'button';
+  qtyChip.title = 'Stückzahl ändern';
+  qtyChip.setAttribute('aria-label', `${wish.text}: ${qty} Stück, antippen zum Erhöhen`);
+  qtyChip.addEventListener('click', () => pantry.setWishQty(wish.id, qty >= 9 ? 1 : qty + 1));
+  actions.appendChild(qtyChip);
+
   if (!wish.done && product && stock > 0) {
     // Der eine Fall, den die App nicht selbst entscheiden kann: Die Zahl
     // stimmt nicht. Als Korrektur gebucht, damit die Prognose sauber bleibt.
@@ -253,9 +264,11 @@ function manualRow({ wish, product, stock }) {
   bought.title = 'Gekauft und eingeräumt';
   bought.setAttribute('aria-label', `${wish.text} einbuchen`);
   bought.addEventListener('click', () => {
-    if (product) openStockDialog(product, { wishId: wish.id });
+    // Die notierte Stückzahl gleich vorbelegen -- sie ist ja der Grund,
+    // warum sie überhaupt dransteht.
+    if (product) openStockDialog(product, { wishId: wish.id, qty });
     // Noch kein Produkt: erst anlegen, der Eintrag verschwindet danach.
-    else openProductDialog(null, { name: wish.text, wishId: wish.id });
+    else openProductDialog(null, { name: wish.text, wishId: wish.id, stock: qty });
   });
 
   actions.append(drop, bought);
@@ -701,12 +714,12 @@ let stockFromScan = false;
 /** Der Einkaufslisten-Eintrag, der mit dem Einbuchen erledigt ist. */
 let stockWishId = null;
 
-function openStockDialog(product, { fromScan = false, wishId = null } = {}) {
+function openStockDialog(product, { fromScan = false, wishId = null, qty = 1 } = {}) {
   stockTarget = product;
   stockFromScan = fromScan;
   stockWishId = wishId;
   $('#stock-title').textContent = `${product.name} einbuchen`;
-  $('#stock-qty').value = '1';
+  $('#stock-qty').value = String(Math.max(1, Number(qty) || 1));
   $('#stock-bb').value = '';
   $('#stock-split').checked = false;
   $('#stock-again-row').hidden = !fromScan;
@@ -991,9 +1004,11 @@ function wire() {
     const text = $('#wish-input').value.trim();
     if (!text) return;
 
+    // "3 Milch" heißt drei Packungen -- die Zahl gehört nicht in den Namen.
+    const { qty, text: label } = Pantry.parseQuantity(text);
     // Den besten Treffer verknüpfen, damit die Zeile den Bestand kennt.
-    const [best] = pantry.search(text);
-    await pantry.addWish(text, best?.product.id ?? null);
+    const [best] = pantry.search(label);
+    await pantry.addWish(label, best?.product.id ?? null, qty);
 
     $('#wish-input').value = '';
     renderWishHint('');

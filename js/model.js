@@ -489,13 +489,38 @@ export class Pantry {
   // --- Von Hand notierte Einkäufe ---------------------------------------
 
   /**
+   * Trennt eine vorangestellte Stückzahl vom Text.
+   *
+   * "3 Milch" und "3x Milch" meinen drei Packungen. "500 g Mehl" dagegen
+   * meint eine -- die Zahl gehört dort zur Bezeichnung. Deshalb zählt eine
+   * Zahl ohne "x" nur, wenn danach keine Maßeinheit folgt.
+   *
+   * @returns {{qty:number, text:string}}
+   */
+  static parseQuantity(input) {
+    const raw = String(input ?? '').trim();
+    const match = raw.match(/^(\d{1,3})\s*([x×*])?\s+(.+)$/i);
+    if (!match) return { qty: 1, text: raw };
+
+    const [, digits, marker, rest] = match;
+    const qty = Number(digits);
+    if (qty < 1 || qty > 99) return { qty: 1, text: raw };
+
+    // Ohne ausdrückliches "x" darf keine Einheit folgen.
+    if (!marker && /^(g|kg|mg|ml|l|cl|stk|stueck|stück|dose|dosen|glas|packung)\b/i.test(rest)) {
+      return { qty: 1, text: raw };
+    }
+    return { qty, text: rest.trim() };
+  }
+
+  /**
    * Etwas auf die Einkaufsliste schreiben.
    *
    * Wird ein passendes Produkt im Vorrat gefunden, merkt sich der Eintrag
    * dessen Kennung. Nur so kann die Liste später sagen "davon ist noch
    * etwas da" -- und genau das ist der Zweck der Verknüpfung.
    */
-  async addWish(text, productId = null) {
+  async addWish(text, productId = null, qty = 1) {
     const label = String(text ?? '').trim();
     if (!label) return null;
 
@@ -503,10 +528,22 @@ export class Pantry {
       id: newId('w'),
       text: label,
       productId: productId ?? null,
+      // Wie viele mitzubringen sind -- die Frage, die vor dem Regal zählt.
+      qty: Math.max(1, Math.round(Number(qty) || 1)),
       createdAt: new Date().toISOString(),
     };
     await this.store.put('wishes', wish);
     return wish;
+  }
+
+  /** Ändert die Stückzahl eines Eintrags. */
+  async setWishQty(wishId, qty) {
+    const wish = this.store.byId('wishes', wishId);
+    if (!wish) return null;
+    return this.store.put('wishes', {
+      ...wish,
+      qty: Math.max(1, Math.round(Number(qty) || 1)),
+    });
   }
 
   async removeWish(wishId) {

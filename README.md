@@ -296,11 +296,17 @@ sind:
 Entscheidung: über das Feld **„Was fehlt noch?"** oder durch Übernehmen eines
 Vorschlags.
 
+- **Die Stückzahl** steht als antippbarer Chip in der Zeile („3×"). Ein Tipp
+  zählt hoch, nach neun beginnt sie wieder bei eins — ein Dialog für eine
+  einstellige Zahl wäre im Laden umständlicher als ein zweiter Tipp. Größere
+  Mengen schreibt man gleich mit: **„12 Eier"** ergibt zwölf Stück.
+  Packungsgrößen bleiben dabei unangetastet — „500 g Mehl" ist eine Packung,
+  keine fünfhundert.
 - **Antippen** hakt einen Eintrag ab (durchgestrichen, rutscht ans Ende) —
   die Geste für den Laden. Abhaken bucht bewusst noch nichts ein: Im Wagen
   liegen heißt nicht im Schrank stehen.
-- **`+`** bucht ein, samt Haltbarkeitsdatum — der Schritt für zu Hause. Der
-  Eintrag verschwindet danach.
+- **`+`** bucht ein, samt Haltbarkeitsdatum — der Schritt für zu Hause. Die
+  notierte Stückzahl ist dabei vorbelegt; der Eintrag verschwindet danach.
 - **`×`** nimmt den Eintrag von der Liste.
 - **„Erledigte weg"** räumt alle Abgehakten auf einmal ab.
 
