@@ -58,6 +58,38 @@
   display: none !important;
 }
 
+/*
+ * Zwei schnelle Tipps auf denselben Knopf deutet ein Handy-Browser sonst
+ * als "Doppeltipp zum Vergrößern" und zoomt mitten in die Bedienung
+ * hinein. Genau das passiert beim Hochzählen einer Stückzahl oder beim
+ * mehrfachen Abbuchen.
+ *
+ * `manipulation` schaltet allein diese Geste ab -- Scrollen und
+ * Zwei-Finger-Zoom bleiben erhalten, anders als bei einem gesperrten
+ * Viewport, der die Seite auch für alle unvergrößerbar machte, die darauf
+ * angewiesen sind.
+ */
+button,
+input,
+select,
+label,
+/*
+ * Die Zeile selbst zählt mit: Die Knöpfe stehen dicht nebeneinander, und
+ * der zweite schnelle Tipp landet leicht einen Millimeter daneben -- im
+ * Abstand zwischen den Knöpfen. Ohne diese Zeile hätte der Browser genau
+ * dort wieder gezoomt.
+ */
+.item,
+.tabs {
+  touch-action: manipulation;
+}
+
+/* Beim schnellen Tippen sonst blau markierte Beschriftungen. */
+button {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 body {
   margin: 0;
   background: var(--bg);
