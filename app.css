@@ -161,6 +161,19 @@ body {
   display: flex;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
+  /*
+   * Notausgang für sehr schmale Telefone: "Einkauf" trägt zwei Zahlen, und
+   * bei zweistelligen Werten passen vier gleich breite Reiter nicht mehr
+   * auf 320 Pixel. Lieber schiebbar als überlappend -- abgeschnittene
+   * Beschriftungen wären das schlechtere Ende. Im Normalfall gibt es nichts
+   * zu schieben, die Leiste sieht aus wie vorher.
+   */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
@@ -168,16 +181,19 @@ body {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  flex: 1;
-  min-width: 0;
+  /*
+   * Wachsen ja, schrumpfen nein: Der freie Platz wird gleichmäßig verteilt,
+   * aber kein Reiter wird unter seinen Inhalt gedrückt.
+   */
+  flex: 1 0 auto;
   min-height: var(--tap);
-  padding: 10px 2px;
+  padding: 10px 6px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--text-dim);
   font: inherit;
-  /* Vier Reiter müssen auf ein schmales Telefon passen, ohne umzubrechen. */
+  /* Vier Reiter nebeneinander auf einem schmalen Telefon. */
   font-size: 0.8125rem;
   white-space: nowrap;
   cursor: pointer;
@@ -206,6 +222,17 @@ body {
 .badge-warn {
   background: var(--urgent);
   color: #fff;
+}
+
+/*
+ * Die Vorschläge der App. Nur umrandet statt gefüllt: Sie stehen nicht auf
+ * derselben Stufe wie das, was man sich selbst notiert hat, und sollen den
+ * Blick nicht genauso fangen.
+ */
+.badge-soft {
+  background: transparent;
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1.5px currentColor;
 }
 
 /* --- Inhalt ------------------------------------------------------------- */

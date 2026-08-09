@@ -26,7 +26,14 @@
     <nav class="tabs" role="tablist">
       <button role="tab" class="tab" data-view="pantry" aria-selected="true">Vorrat</button>
       <button role="tab" class="tab" data-view="shopping" aria-selected="false">
-        Einkauf <span class="badge" id="badge-shopping" hidden></span>
+        Einkauf
+        <!--
+          Zwei getrennte Zahlen: gefüllt, was auf der Liste steht, und
+          umrandet, was die App bloß vorschlägt. Für Vorlesehilfen sind sie
+          ausgeblendet -- die Beschriftung des Reiters sagt es in Worten.
+        -->
+        <span class="badge" id="badge-manual" aria-hidden="true" hidden></span>
+        <span class="badge badge-soft" id="badge-suggest" aria-hidden="true" hidden></span>
       </button>
       <button role="tab" class="tab" data-view="expiry" aria-selected="false">
         Ablauf <span class="badge badge-warn" id="badge-expiry" hidden></span>

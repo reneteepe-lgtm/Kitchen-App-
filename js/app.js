@@ -33,7 +33,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.9.1';
+export const APP_VERSION = '1.10.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -444,13 +444,37 @@ function renderExpiry() {
 }
 
 function renderBadges() {
-  // Alles, was einzukaufen ist -- Vorschläge und selbst Notiertes.
-  const shopping = pantry.shoppingList().length + pantry.manualList().length;
+  /*
+   * Zwei Zahlen statt einer Summe: Was man sich selbst notiert hat, ist
+   * verbindlich -- die Vorschläge der App sind es nicht. Zusammengezählt
+   * sah der Einkauf größer aus, als er war, und man wusste vor dem
+   * Antippen nicht, wovon die Zahl eigentlich sprach.
+   *
+   * Abgehakte Einträge zählen nicht mit. Sie liegen zwar noch unten im
+   * Erledigt-Block, sind aber besorgt -- die Zahl am Reiter beantwortet
+   * die Frage "wie viel steht noch aus".
+   */
+  const manual = pantry.manualList().filter((entry) => !entry.wish.done).length;
+  const suggestions = pantry.shoppingList().length;
   const expiry = pantry.expiringSoon().length;
 
-  const badgeShopping = $('#badge-shopping');
-  badgeShopping.textContent = String(shopping);
-  badgeShopping.hidden = shopping === 0;
+  const badgeManual = $('#badge-manual');
+  badgeManual.textContent = String(manual);
+  badgeManual.hidden = manual === 0;
+  badgeManual.title = plural(manual, 'Eintrag auf der Liste', 'Einträge auf der Liste');
+
+  const badgeSuggest = $('#badge-suggest');
+  badgeSuggest.textContent = String(suggestions);
+  badgeSuggest.hidden = suggestions === 0;
+  badgeSuggest.title = plural(suggestions, 'Vorschlag der App', 'Vorschläge der App');
+
+  // Vorgelesen ergäben zwei nackte Zahlen nebeneinander keinen Sinn.
+  const spoken = [];
+  if (manual) spoken.push(plural(manual, 'Eintrag auf der Liste', 'Einträge auf der Liste'));
+  if (suggestions) spoken.push(plural(suggestions, 'Vorschlag', 'Vorschläge'));
+  const tabShopping = $('.tab[data-view="shopping"]');
+  if (spoken.length) tabShopping.setAttribute('aria-label', `Einkauf: ${spoken.join(', ')}`);
+  else tabShopping.removeAttribute('aria-label');
 
   const badgeExpiry = $('#badge-expiry');
   badgeExpiry.textContent = String(expiry);

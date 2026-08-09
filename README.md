@@ -292,6 +292,12 @@ in `js/categories.js` und lässt sich dort umstellen.
 Der Reiter *Einkauf* zeigt zwei Abschnitte, weil es zwei verschiedene Dinge
 sind:
 
+Deshalb trägt der Reiter auch **zwei Zahlen** statt einer Summe: gefüllt, was
+auf eurer Liste steht, und daneben umrandet, was die App bloß vorschlägt.
+Abgehaktes zählt nicht mit — die erste Zahl beantwortet die Frage „wie viel
+steht noch aus". Als Summe sah der Einkauf größer aus, als er war, und man
+wusste vor dem Antippen nicht, wovon die Zahl eigentlich sprach.
+
 **Einkaufsliste** — was ihr tatsächlich kauft. Sie entsteht nur durch eure
 Entscheidung: über das Feld **„Was fehlt noch?"** oder durch Übernehmen eines
 Vorschlags.
