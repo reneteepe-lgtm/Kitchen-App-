@@ -403,6 +403,42 @@ export class Pantry {
     await this.store.putMany(writes);
   }
 
+  // --- Prognose zurücksetzen --------------------------------------------
+
+  /**
+   * Verwirft die Verbrauchshistorie eines Produkts.
+   *
+   * Gedacht für den Anfang: Beim Einpflegen entstehen Buchungen, die nichts
+   * über den tatsächlichen Verbrauch aussagen -- ein paarmal auf Plus und
+   * Minus getippt, und die App hält das für Gewohnheit.
+   *
+   * Der Bestand bleibt unangetastet; nur die Buchungen verschwinden. Der
+   * Beobachtungsbeginn wandert auf jetzt, weil die Zeit davor sonst als
+   * Zeitraum ohne Verbrauch zählte und die Schätzung gegen null drückte.
+   */
+  async resetForecast(productId) {
+    const product = this.store.byId('products', productId);
+    if (!product) return false;
+
+    for (const event of this.eventsFor(productId)) {
+      await this.store.remove('events', event.id);
+    }
+    await this.store.put('products', {
+      ...product,
+      observedSince: new Date().toISOString(),
+    });
+    return true;
+  }
+
+  /** Dasselbe für den ganzen Vorrat. @returns {Promise<number>} */
+  async resetAllForecasts() {
+    let count = 0;
+    for (const product of this.products()) {
+      if (await this.resetForecast(product.id)) count += 1;
+    }
+    return count;
+  }
+
   /** Alles, was die Oberfläche über ein Produkt wissen muss. */
   assess(product, now = new Date()) {
     const lots = this.lots();

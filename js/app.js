@@ -33,7 +33,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.7.1';
+export const APP_VERSION = '1.8.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -582,6 +582,19 @@ function renderDetail(productId) {
   applyRow.appendChild(applyBtn);
   actions.appendChild(applyRow);
 
+  // Nur anbieten, wenn es überhaupt etwas zu verwerfen gibt.
+  if (pantry.eventsFor(product.id).length) {
+    const resetRow = el('div', 'button-row');
+    const resetBtn = el('button', 'button', 'Prognose zurücksetzen');
+    resetBtn.addEventListener('click', async () => {
+      if (!confirm(`Verbrauchsbuchungen von „${product.name}" verwerfen?\n\nDer Bestand bleibt.`)) return;
+      await pantry.resetForecast(product.id);
+      toast(`${product.name}: Prognose zurückgesetzt`);
+    });
+    resetRow.appendChild(resetBtn);
+    actions.appendChild(resetRow);
+  }
+
   const editRow = el('div', 'button-row');
   const editBtn = el('button', 'button', 'Bearbeiten');
   editBtn.addEventListener('click', () => {
@@ -825,6 +838,26 @@ async function handleScan(barcode, hint) {
   if (!hit) toast('Produkt nicht in der Datenbank — bitte Namen eintragen');
 }
 
+// --- Prognosen zurücksetzen -----------------------------------------------
+
+async function resetAllForecasts() {
+  const products = pantry.products();
+  if (!products.length) return;
+
+  const buchungen = pantry.events().length;
+  const bestaetigt = confirm(
+    `Alle Verbrauchsbuchungen verwerfen?\n\n` +
+      `${buchungen} Buchungen aus ${products.length} Produkten werden gelöscht, ` +
+      `damit die App von vorn lernt.\n\n` +
+      `Bestand, Haltbarkeitsdaten und Einkaufsliste bleiben unverändert. ` +
+      `Rückgängig machen lässt sich das nicht.`,
+  );
+  if (!bestaetigt) return;
+
+  const count = await pantry.resetAllForecasts();
+  toast(`${plural(count, 'Prognose', 'Prognosen')} zurückgesetzt`);
+}
+
 // --- Marken nachtragen ----------------------------------------------------
 
 /**
@@ -1060,6 +1093,7 @@ function wire() {
     store.setSetting('expiryWarnDays', Math.max(0, Number(e.target.value) || 0));
   });
 
+  $('#btn-reset-forecasts').addEventListener('click', resetAllForecasts);
   $('#btn-backfill').addEventListener('click', backfillBrands);
   $('#btn-export').addEventListener('click', exportBackup);
   $('#btn-import').addEventListener('click', () => $('#import-file').click());

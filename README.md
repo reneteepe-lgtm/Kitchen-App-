@@ -130,6 +130,23 @@ Zwei Feinheiten, die im Alltag den Unterschied machen:
   Aussage darüber, wie schnell etwas weggeht, und darf die Prognose nicht
   verfälschen.
 
+## Prognosen zurücksetzen
+
+Beim Einpflegen entstehen Buchungen, die nichts über den tatsächlichen
+Verbrauch aussagen — ein paarmal auf `+` und `−` getippt, und die App hält
+das für Gewohnheit. Unter **Mehr → Prognosen zurücksetzen** lässt sich die
+gesamte Verbrauchshistorie verwerfen; für einzelne Produkte steht derselbe
+Knopf in der Detailansicht, sobald es dort etwas zu verwerfen gibt.
+
+Verworfen werden ausschließlich die Buchungen. **Bestand, Haltbarkeitsdaten
+und Einkaufsliste bleiben unangetastet**, und danach zählt jede neue Buchung
+wieder normal.
+
+Dabei wandert auch der Beobachtungsbeginn (`observedSince`) auf jetzt. Ohne
+das zählte die Zeit vor dem Zurücksetzen als Zeitraum ohne Verbrauch — die
+geschätzte Rate fiele gegen null und die App verspräche eine viel zu lange
+Reichweite.
+
 ## Kategorien
 
 Der Vorrat ist in dreizehn Fächer geteilt, in der Reihenfolge, in der man

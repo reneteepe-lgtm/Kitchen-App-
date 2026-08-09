@@ -190,7 +190,10 @@ export function projectDepletion(stock, rate, now = new Date()) {
 export function assessProduct({ product, stock, events, now = new Date(), config = {}, leadDays = 7 }) {
   const rate = estimateConsumptionRate({
     events,
-    observedSince: product.createdAt,
+    // `observedSince` setzt den Beobachtungsbeginn neu, wenn die Prognose
+    // zurückgesetzt wurde. Ohne das zählte die Zeit davor als Zeitraum
+    // ohne Verbrauch und drückte die geschätzte Rate nach unten.
+    observedSince: product.observedSince ?? product.createdAt,
     now,
     config,
   });
