@@ -194,6 +194,40 @@ export function categoryById(id) {
   return BY_ID.get(id) ?? BY_ID.get(FALLBACK_CATEGORY);
 }
 
+/**
+ * Dieselben Fächer, aber in der Reihenfolge eines Einkaufs.
+ *
+ * Im Vorrat zählt, wo etwas in der Küche steht. Im Laden zählt der Weg
+ * durch den Markt, und der ist ein anderer: Obst und Gemüse liegen in
+ * deutschen Supermärkten fast immer gleich hinter dem Eingang, danach
+ * folgen Backwaren, dann die Regalgassen mit dem Trockensortiment.
+ *
+ * Kühlware, Fleisch und Tiefkühl stehen bewusst am Ende. Das entspricht
+ * bei den meisten Märkten dem Rückweg zur Kasse und hält zugleich die
+ * Kühlkette kurz. Getränke ganz zuletzt, weil sie schwer sind und oben
+ * auf dem Wagen nichts zu suchen haben.
+ */
+export const SHOPPING_ORDER = [
+  'produce',
+  'breakfast',
+  'pasta',
+  'potato',
+  'sauce',
+  'spice',
+  'baking',
+  'household',
+  'dairy',
+  'meat',
+  'frozen',
+  'drinks',
+  'other',
+];
+
+/** Die Fächer in der Reihenfolge, in der man sie im Laden abläuft. */
+export function categoriesInShoppingOrder() {
+  return SHOPPING_ORDER.map((id) => BY_ID.get(id)).filter(Boolean);
+}
+
 /** Deutsche Flexionsendungen, die an einen Wortstamm treten dürfen. */
 const ENDINGS = ['', 'n', 'en', 'e', 's', 'es', 'er', 'ln'];
 
@@ -286,22 +320,30 @@ export function categoryOf(product) {
 }
 
 /**
- * Gruppiert Produkte in die Fächer, in der festgelegten Reihenfolge.
- * Leere Fächer fallen weg.
+ * Gruppiert Einträge in die Fächer. Leere Fächer fallen weg, die
+ * Reihenfolge innerhalb eines Fachs bleibt wie übergeben.
  *
- * @param {Array} items Beliebige Objekte mit einem `product`-Feld
+ * @param {Array} items
+ * @param {object} [options]
+ * @param {Array}  [options.order] Fächer in der gewünschten Reihenfolge.
+ * @param {(item:any) => string} [options.categoryFor]
+ *        Wie die Kategorie eines Eintrags zu bestimmen ist. Nötig für
+ *        Einkaufslisten-Einträge ohne Produkt -- dort steckt die einzige
+ *        Auskunft im Text ("Alufolie").
  * @returns {Array<{category:object, items:Array}>}
  */
-export function groupByCategory(items) {
-  const buckets = new Map(CATEGORIES.map((category) => [category.id, []]));
+export function groupByCategory(items, { order = CATEGORIES, categoryFor } = {}) {
+  const pick = categoryFor ?? ((item) => categoryOf(item.product ?? item));
+  const buckets = new Map(order.map((category) => [category.id, []]));
 
   for (const item of items) {
-    const id = categoryOf(item.product ?? item);
-    buckets.get(id).push(item);
+    const id = pick(item);
+    // Ein Fach, das in dieser Reihenfolge nicht vorkommt, landet im
+    // Auffangfach, statt den Eintrag verschwinden zu lassen.
+    (buckets.get(id) ?? buckets.get(FALLBACK_CATEGORY)).push(item);
   }
 
-  return CATEGORIES.filter((category) => buckets.get(category.id).length > 0).map((category) => ({
-    category,
-    items: buckets.get(category.id),
-  }));
+  return order
+    .filter((category) => buckets.get(category.id).length > 0)
+    .map((category) => ({ category, items: buckets.get(category.id) }));
 }

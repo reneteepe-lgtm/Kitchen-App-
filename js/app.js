@@ -10,7 +10,14 @@ import { Store, LocalStorageAdapter } from './storage.js';
 import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.js';
 import { BarcodeScanner, isScanSupported, lookupBarcode, suggestName } from './barcode.js';
 import { stockAnswer } from './search.js';
-import { CATEGORIES, categoryById, categoryOf, groupByCategory, guessCategory } from './categories.js';
+import {
+  CATEGORIES,
+  categoriesInShoppingOrder,
+  categoryById,
+  categoryOf,
+  groupByCategory,
+  guessCategory,
+} from './categories.js';
 import {
   describeForecast,
   describeRate,
@@ -26,7 +33,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.5.1';
+export const APP_VERSION = '1.6.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -265,16 +272,56 @@ function renderWishHint(text) {
   );
 }
 
+/**
+ * Die Kategorie eines Listeneintrags.
+ *
+ * Hängt ein Produkt daran, gilt dessen Fach. Frei Notiertes wie "Alufolie"
+ * hat keins -- dort ist der Text die einzige Auskunft, und die reicht.
+ */
+const entryCategory = (entry) =>
+  entry.product ? categoryOf(entry.product) : guessCategory(entry.wish.text);
+
+/** Eine Zwischenüberschrift für einen Kategorie-Block. */
+function groupHeading(category, count) {
+  const heading = el('li', 'group-head');
+  heading.appendChild(el('span', 'group-icon', category.icon));
+  heading.appendChild(el('span', null, category.label));
+  heading.appendChild(el('span', 'group-count', String(count)));
+  return heading;
+}
+
 function renderManual() {
   const entries = pantry.manualList();
-  const done = entries.filter((entry) => entry.wish.done).length;
+  const open = entries.filter((entry) => !entry.wish.done);
+  const done = entries.filter((entry) => entry.wish.done);
 
-  $('#manual-list').replaceChildren(...entries.map(manualRow));
+  // Nach Gängen sortiert, damit man den Markt in einem Zug durchläuft.
+  const groups = groupByCategory(open, {
+    order: categoriesInShoppingOrder(),
+    categoryFor: entryCategory,
+  });
+
+  const nodes = [];
+  for (const { category, items } of groups) {
+    nodes.push(groupHeading(category, items.length), ...items.map(manualRow));
+  }
+
+  // Erledigtes sammelt sich unten in einem Block -- sonst zerrisse es die
+  // Gänge, durch die man gerade läuft.
+  if (done.length) {
+    const heading = el('li', 'group-head');
+    heading.appendChild(el('span', 'group-icon', '✓'));
+    heading.appendChild(el('span', null, 'Erledigt'));
+    heading.appendChild(el('span', 'group-count', String(done.length)));
+    nodes.push(heading, ...done.map(manualRow));
+  }
+
+  $('#manual-list').replaceChildren(...nodes);
   $('#manual-head').hidden = entries.length === 0;
   $('#manual-empty').hidden = entries.length > 0;
-  $('#clear-done').hidden = done === 0;
+  $('#clear-done').hidden = done.length === 0;
   // Kurz halten: Der Knopf teilt sich die Zeile mit der Überschrift.
-  $('#clear-done').textContent = `Erledigte weg (${done})`;
+  $('#clear-done').textContent = `Erledigte weg (${done.length})`;
   return entries.length;
 }
 
@@ -282,8 +329,7 @@ function renderShopping() {
   const list = $('#shopping-list');
   const items = pantry.shoppingList();
 
-  list.replaceChildren(
-    ...items.map((item) => {
+  const suggestionRow = (item) => {
       const row = el('li', 'item');
       const main = el('button', 'item-main');
       main.appendChild(el('span', 'item-name', item.product.name));
@@ -314,8 +360,20 @@ function renderShopping() {
       actions.append(skip, take);
       row.append(main, actions);
       return row;
-    }),
-  );
+  };
+
+  // Dieselbe Gangfolge wie die Einkaufsliste darunter, damit sich beim
+  // Übernehmen nichts umsortiert.
+  const groups = groupByCategory(items, {
+    order: categoriesInShoppingOrder(),
+    categoryFor: entryCategory,
+  });
+
+  const nodes = [];
+  for (const { category, items: entries } of groups) {
+    nodes.push(groupHeading(category, entries.length), ...entries.map(suggestionRow));
+  }
+  list.replaceChildren(...nodes);
 
   renderManual();
   // Überschrift und Einleitung nur zeigen, wenn darunter auch etwas steht.

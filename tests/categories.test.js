@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import {
   CATEGORIES,
   FALLBACK_CATEGORY,
+  SHOPPING_ORDER,
+  categoriesInShoppingOrder,
   categoryById,
   categoryOf,
   guessCategory,
@@ -227,6 +229,76 @@ test('gruppieren behält alle Einträge', () => {
 test('gruppieren funktioniert auch mit blanken Produkten', () => {
   const groups = groupByCategory([{ name: 'Milch' }, { name: 'Spaghetti' }]);
   assert.deepEqual(groups.map((g) => g.category.id), ['pasta', 'dairy']);
+});
+
+// --- Reihenfolge für den Einkauf ----------------------------------------
+
+test('die Einkaufsreihenfolge enthält jedes Fach genau einmal', () => {
+  const shopping = categoriesInShoppingOrder();
+  assert.equal(shopping.length, CATEGORIES.length, 'kein Fach darf fehlen');
+  assert.equal(new Set(SHOPPING_ORDER).size, SHOPPING_ORDER.length, 'keines doppelt');
+  for (const category of CATEGORIES) {
+    assert.ok(SHOPPING_ORDER.includes(category.id), `${category.id} fehlt in der Laufreihenfolge`);
+  }
+});
+
+test('der Einkauf beginnt bei Obst und Gemüse', () => {
+  assert.equal(categoriesInShoppingOrder()[0].id, 'produce');
+});
+
+test('Kühlware und Tiefkühl kommen spät, Sonstiges ganz zuletzt', () => {
+  const order = SHOPPING_ORDER;
+  const at = (id) => order.indexOf(id);
+
+  // Trockensortiment vor der Kühlung: kurze Kühlkette, und in den meisten
+  // Märkten liegt das Kühlregal auf dem Rückweg zur Kasse.
+  assert.ok(at('pasta') < at('dairy'));
+  assert.ok(at('sauce') < at('dairy'));
+  assert.ok(at('dairy') < at('frozen'), 'Tiefkühl nach der übrigen Kühlware');
+  assert.ok(at('meat') < at('frozen'));
+  assert.ok(at('drinks') > at('baking'), 'Getränke spät, weil schwer');
+  assert.equal(order.at(-1), 'other');
+});
+
+test('die Einkaufsreihenfolge unterscheidet sich von der im Vorrat', () => {
+  // Sonst wäre die ganze Übung sinnlos.
+  const pantry = CATEGORIES.map((c) => c.id);
+  assert.notDeepEqual(SHOPPING_ORDER, pantry);
+  assert.equal(pantry[0], 'pasta', 'im Vorrat steht der Trockenvorrat vorn');
+});
+
+test('gruppieren folgt der übergebenen Reihenfolge', () => {
+  const items = [
+    { product: { name: 'Milch' } },
+    { product: { name: 'Tomaten' } },
+    { product: { name: 'Spaghetti' } },
+  ];
+
+  assert.deepEqual(
+    groupByCategory(items).map((g) => g.category.id),
+    ['pasta', 'dairy', 'produce'],
+    'im Vorrat nach Küchenordnung',
+  );
+
+  assert.deepEqual(
+    groupByCategory(items, { order: categoriesInShoppingOrder() }).map((g) => g.category.id),
+    ['produce', 'pasta', 'dairy'],
+    'im Laden nach Laufweg',
+  );
+});
+
+test('Einträge ohne Produkt lassen sich über ihren Text einsortieren', () => {
+  // Von Hand notiertes wie "Alufolie" hat kein Produkt im Vorrat.
+  const items = [{ text: 'Alufolie' }, { text: 'Bananen' }];
+  const groups = groupByCategory(items, {
+    order: categoriesInShoppingOrder(),
+    categoryFor: (item) => guessCategory(item.text),
+  });
+
+  assert.deepEqual(
+    groups.map((g) => g.category.id),
+    ['produce', 'household'],
+  );
 });
 
 test('jede Kategorie hat Kennung, Namen und Zeichen', () => {

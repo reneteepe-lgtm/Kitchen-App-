@@ -135,6 +135,9 @@ Der Vorrat ist in dreizehn Fächer geteilt, in der Reihenfolge, in der man
 eine Küche durchgeht — Trockenvorrat, Kühlschrank, Frisches, Getränke,
 Haushalt. Leere Fächer werden nicht angezeigt.
 
+Die Einkaufsliste nutzt dieselben Fächer, aber **eine andere Reihenfolge**:
+den Weg durch den Markt. Siehe [Gangfolge](#gangfolge-im-supermarkt).
+
 Einsortiert wird **automatisch anhand des Namens**. Niemand muss beim
 Erfassen eine Kategorie auswählen, und bereits erfasste Produkte landen
 sofort im richtigen Fach, ohne dass die gespeicherten Daten angefasst
@@ -200,6 +203,31 @@ tippen (`muesli` findet `Müsli`, `creme fraiche` findet `Crème fraîche`), und
 ab vier Zeichen werden kleine Tippfehler verziehen (`jogurt` findet
 `Joghurt`). Darunter wird bewusst nicht geraten: Bei drei Buchstaben passt
 sonst alles auf alles. Ein eingetippter Barcode zählt als voller Treffer.
+
+### Gangfolge im Supermarkt
+
+Beide Listen im Reiter *Einkauf* sind nach Fächern gegliedert — aber nicht
+in der Ordnung der Küche, sondern in der des Ladens:
+
+1. 🥕 Obst & Gemüse · 2. 🍞 Frühstück & Brot · 3. 🍝 Nudeln & Reis ·
+4. 🥔 Kartoffeln & Hülsenfrüchte · 5. 🥫 Saucen & Konserven ·
+6. 🧂 Öl, Essig & Gewürze · 7. 🧁 Backen & Süßes · 8. 🧽 Haushalt ·
+9. 🧀 Milch & Käse · 10. 🥩 Fleisch & Fisch · 11. 🧊 Tiefkühl ·
+12. 🥤 Getränke · 13. 📦 Sonstiges
+
+Obst und Gemüse liegen in deutschen Supermärkten fast immer gleich hinter
+dem Eingang, danach folgen Backwaren und die Regalgassen. Kühlware, Fleisch
+und Tiefkühl stehen bewusst hinten: Das entspricht bei den meisten Märkten
+dem Rückweg zur Kasse und hält zugleich die Kühlkette kurz. Getränke ganz
+zuletzt, weil sie schwer sind und oben auf dem Wagen nichts zu suchen haben.
+
+Auch frei Notiertes wird einsortiert — bei „Alufolie" oder „Brötchen" gibt
+es kein Produkt im Vorrat, also entscheidet der Text allein. Abgehaktes
+sammelt sich unten in einem eigenen Block, damit es die Gänge nicht
+zerreißt, durch die man gerade läuft.
+
+Passt die Reihenfolge nicht zu eurem Markt, steht sie als `SHOPPING_ORDER`
+in `js/categories.js` und lässt sich dort umstellen.
 
 ### Zwei Listen, absichtlich getrennt
 
