@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f6f4a" />
+    <title>Küchenvorrat</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-180.png" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Küchenvorrat</h1>
+      <div class="header-actions">
+        <button id="btn-scan" class="icon-button" hidden title="Barcode scannen" aria-label="Barcode scannen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M6 12h12"/></svg>
+        </button>
+        <button id="btn-add" class="icon-button" title="Produkt anlegen" aria-label="Produkt anlegen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" class="tab" data-view="pantry" aria-selected="true">Vorrat</button>
+      <button role="tab" class="tab" data-view="shopping" aria-selected="false">
+        Einkauf <span class="badge" id="badge-shopping" hidden></span>
+      </button>
+      <button role="tab" class="tab" data-view="expiry" aria-selected="false">
+        Ablauf <span class="badge badge-warn" id="badge-expiry" hidden></span>
+      </button>
+      <button role="tab" class="tab" data-view="more" aria-selected="false">Mehr</button>
+    </nav>
+
+    <main>
+      <!-- Vorrat -->
+      <section id="view-pantry" class="view">
+        <div class="search-row">
+          <input id="search" type="search" placeholder="Suchen…" autocomplete="off" aria-label="Vorrat durchsuchen" />
+        </div>
+        <ul id="pantry-list" class="list"></ul>
+        <p id="pantry-empty" class="empty-state" hidden>
+          Noch nichts erfasst.<br />
+          Leg oben rechts das erste Produkt an oder scanne einen Barcode.
+        </p>
+      </section>
+
+      <!-- Einkaufsliste -->
+      <section id="view-shopping" class="view" hidden>
+        <p class="view-intro">
+          Automatisch aus Bestand und geschätztem Verbrauch. Angehakt wird direkt eingebucht.
+        </p>
+        <ul id="shopping-list" class="list"></ul>
+        <p id="shopping-empty" class="empty-state" hidden>Alles da. Nichts einzukaufen.</p>
+      </section>
+
+      <!-- Ablaufende Chargen -->
+      <section id="view-expiry" class="view" hidden>
+        <p class="view-intro">Was zuerst aufgebraucht werden sollte.</p>
+        <ul id="expiry-list" class="list"></ul>
+        <p id="expiry-empty" class="empty-state" hidden>Nichts läuft demnächst ab.</p>
+      </section>
+
+      <!-- Einstellungen und Daten -->
+      <section id="view-more" class="view" hidden>
+        <div class="card">
+          <h2>Einstellungen</h2>
+          <label class="field">
+            <span>Vorlauf für die Einkaufsliste</span>
+            <span class="field-hint">Wie viele Tage vorher etwas auf die Liste soll.</span>
+            <input id="setting-lead" type="number" min="0" max="60" step="1" />
+          </label>
+          <label class="field">
+            <span>Warnung vor Ablauf</span>
+            <span class="field-hint">Ab wie vielen Tagen vor dem MHD gewarnt wird.</span>
+            <input id="setting-expiry" type="number" min="0" max="60" step="1" />
+          </label>
+        </div>
+
+        <div class="card">
+          <h2>Daten</h2>
+          <p class="field-hint">
+            Alles liegt auf diesem Gerät. Für das zweite Handy exportierst du hier eine
+            Sicherung und liest sie dort ein.
+          </p>
+          <div class="button-row">
+            <button id="btn-export" class="button">Exportieren</button>
+            <button id="btn-import" class="button">Einlesen</button>
+          </div>
+          <input id="import-file" type="file" accept="application/json" hidden />
+          <p id="data-stats" class="field-hint data-stats"></p>
+        </div>
+
+        <div class="card">
+          <h2>Wie die Prognose funktioniert</h2>
+          <p class="field-hint">
+            Aus jeder Buchung lernt die App, wie schnell etwas weggeht. Neuere Buchungen
+            zählen mehr als alte, damit sich geänderte Gewohnheiten durchsetzen. Solange zu
+            wenig Daten da sind, steht statt eines Datums „wird noch gelernt“ — die App tut
+            dann nicht so, als wüsste sie schon Bescheid.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Scanner -->
+    <dialog id="dlg-scan" class="dialog dialog-full">
+      <div class="scanner">
+        <video id="scan-video" playsinline muted></video>
+        <div class="scan-frame" aria-hidden="true"></div>
+        <p id="scan-hint" class="scan-hint">Barcode ins Bild halten…</p>
+        <button id="scan-close" class="button button-ghost scan-close">Schließen</button>
+      </div>
+    </dialog>
+
+    <!-- Produkt anlegen / bearbeiten -->
+    <dialog id="dlg-product" class="dialog">
+      <form method="dialog" id="form-product">
+        <h2 id="product-title">Produkt anlegen</h2>
+        <label class="field">
+          <span>Name</span>
+          <input id="product-name" type="text" required autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Mindestbestand</span>
+          <span class="field-hint">Ab diesem Bestand kommt es auf die Einkaufsliste.</span>
+          <input id="product-min" type="number" min="0" step="1" value="1" />
+        </label>
+        <label class="field">
+          <span>Barcode</span>
+          <input id="product-barcode" type="text" inputmode="numeric" autocomplete="off" placeholder="optional" />
+        </label>
+        <div id="product-initial" class="field">
+          <span>Anfangsbestand</span>
+          <input id="product-stock" type="number" min="0" step="1" value="1" />
+        </div>
+        <div class="button-row">
+          <button type="button" class="button button-ghost" data-close>Abbrechen</button>
+          <button type="submit" class="button button-primary">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Einbuchen -->
+    <dialog id="dlg-stock" class="dialog">
+      <form method="dialog" id="form-stock">
+        <h2 id="stock-title">Einbuchen</h2>
+        <label class="field">
+          <span>Anzahl Packungen</span>
+          <input id="stock-qty" type="number" min="1" step="1" value="1" required />
+        </label>
+        <label class="field">
+          <span>Mindestens haltbar bis</span>
+          <span class="field-hint">Leer lassen, wenn es keins gibt oder egal ist.</span>
+          <input id="stock-bb" type="date" />
+        </label>
+        <div class="button-row">
+          <button type="button" class="button button-ghost" data-close>Abbrechen</button>
+          <button type="submit" class="button button-primary">Einbuchen</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Produktdetails -->
+    <dialog id="dlg-detail" class="dialog">
+      <div id="detail-body"></div>
+    </dialog>
+
+    <div id="toast" class="toast" hidden role="status" aria-live="polite">
+      <span id="toast-text"></span>
+      <button id="toast-undo" class="toast-undo" hidden>Rückgängig</button>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

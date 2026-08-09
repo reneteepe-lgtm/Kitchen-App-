@@ -1,0 +1,11 @@
+{
+  "name": "kuechenvorrat",
+  "version": "1.0.0",
+  "description": "Vorratsverwaltung für die Küche mit lernender Verbrauchsprognose",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/",
+    "serve": "node scripts/serve.js"
+  }
+}

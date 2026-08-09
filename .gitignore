@@ -1,0 +1,5 @@
+node_modules/
+# Temporäre Seiten zum Ausprobieren im Browser
+__*.html
+*.log
+.DS_Store

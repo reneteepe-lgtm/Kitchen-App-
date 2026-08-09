@@ -1,0 +1,593 @@
+/* Küchenvorrat -- mobil zuerst, Bedienung mit einer Hand. */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --surface-2: #f0efeb;
+  --text: #1d1f1d;
+  --text-dim: #63696a;
+  --line: #e0dfd9;
+
+  --accent: #1f6f4a;
+  --accent-text: #ffffff;
+
+  --ok: #2f7d54;
+  --soon: #b3701a;
+  --urgent: #b5432c;
+  --empty: #8a8f90;
+
+  --radius: 14px;
+  --tap: 44px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141614;
+    --surface: #1e211f;
+    --surface-2: #262a27;
+    --text: #eceeec;
+    --text-dim: #9aa19d;
+    --line: #303532;
+
+    --accent: #4bab7c;
+    --accent-text: #08130d;
+
+    --ok: #62bf8e;
+    --soon: #e2a24f;
+    --urgent: #ef7f66;
+    --empty: #7d8482;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/*
+ * Muss sein: Die Regeln unten setzen `display` auf Klassen (etwa
+ * `.badge { display: inline-grid }`), und das schlägt das schwächere
+ * `display: none` des `hidden`-Attributs. Ohne diese Zeile bleiben
+ * ausgeblendete Elemente sichtbar.
+ */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* --- Kopfzeile ---------------------------------------------------------- */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.icon-button:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.icon-button svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- Reiter ------------------------------------------------------------- */
+
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 10px 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  /* Vier Reiter müssen auf ein schmales Telefon passen, ohne umzubrechen. */
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.badge-warn {
+  background: var(--urgent);
+  color: #fff;
+}
+
+/* --- Inhalt ------------------------------------------------------------- */
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px 12px 40px;
+}
+
+.view-intro {
+  margin: 4px 4px 12px;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+.search-row {
+  margin-bottom: 12px;
+}
+
+.search-row input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.item-main {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 4px 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item-name {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+}
+
+.item-note.tone-ok { color: var(--ok); }
+.item-note.tone-soon { color: var(--soon); }
+.item-note.tone-urgent { color: var(--urgent); font-weight: 600; }
+.item-note.tone-empty { color: var(--empty); }
+
+.stock-chip {
+  min-width: 34px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+
+.stock-chip.is-empty {
+  background: transparent;
+  color: var(--empty);
+  border: 1px dashed var(--line);
+}
+
+.step {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.step-plus {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.empty-state {
+  margin: 48px 16px;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.7;
+}
+
+/* --- Karten und Formulare ---------------------------------------------- */
+
+.card {
+  margin-bottom: 12px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.field > span:first-child {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.field-hint {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.field input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.data-stats {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.button {
+  flex: 1;
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button-primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.button-ghost {
+  background: transparent;
+}
+
+.button-danger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--urgent);
+}
+
+/* --- Dialoge ------------------------------------------------------------ */
+
+.dialog {
+  width: min(440px, calc(100vw - 24px));
+  padding: 20px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25);
+}
+
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.dialog h2 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+}
+
+.dialog-full {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+/* --- Scanner ------------------------------------------------------------ */
+
+.scanner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.scanner video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scan-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(72vw, 300px);
+  height: min(42vw, 180px);
+  transform: translate(-50%, -60%);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45);
+}
+
+.scan-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  margin: 0;
+  padding: 0 24px;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.scan-close {
+  position: absolute;
+  left: 50%;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  width: min(60vw, 220px);
+  transform: translateX(-50%);
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+}
+
+/* --- Detailansicht ------------------------------------------------------ */
+
+.detail-head {
+  margin-bottom: 16px;
+}
+
+.detail-head h2 {
+  margin: 0 0 4px;
+}
+
+.detail-sub {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+.detail-section {
+  margin: 16px 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.detail-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.lot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 0.9375rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.lot-row:last-child {
+  border-bottom: 0;
+}
+
+.lot-row.is-expired {
+  color: var(--urgent);
+}
+
+.lot-row.is-soon {
+  color: var(--soon);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stat {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.stat dt {
+  margin: 0 0 2px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.stat dd {
+  margin: 0;
+  font-weight: 650;
+}
+
+/* --- Toast -------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(420px, calc(100vw - 24px));
+  padding: 12px 16px;
+  transform: translateX(-50%);
+  border-radius: 12px;
+  background: #23262a;
+  color: #fff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  font-size: 0.9375rem;
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+.toast span {
+  flex: 1;
+}
+
+.toast-undo {
+  flex: 0 0 auto;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  color: #7fd3a5;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .item,
+  .toast {
+    transition: opacity 0.15s ease;
+  }
+}

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Küchenvorrat">
+  <rect width="512" height="512" rx="112" fill="#1f6f4a"/>
+  <g fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Vorratsglas -->
+    <path d="M176 168h160v208a32 32 0 0 1-32 32H208a32 32 0 0 1-32-32z"/>
+    <path d="M164 132h184a12 12 0 0 1 12 12v12a12 12 0 0 1-12 12H164a12 12 0 0 1-12-12v-12a12 12 0 0 1 12-12z"/>
+    <!-- Füllstand -->
+    <path d="M176 288h160" stroke-dasharray="0 0"/>
+  </g>
+  <path d="M176 288h160v88a32 32 0 0 1-32 32H208a32 32 0 0 1-32-32z" fill="#ffffff" opacity="0.85"/>
+</svg>
