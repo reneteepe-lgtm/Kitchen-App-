@@ -50,10 +50,24 @@ export const CATEGORIES = [
     id: 'sauce',
     label: 'Saucen & Konserven',
     icon: '🥫',
-    // "Dose" und "Glas" stehen bewusst nicht hier: Sie beschreiben die
-    // Verpackung, nicht den Inhalt -- "Kichererbsen Dose" sind Erbsen.
+    /**
+     * Erst zusammen ergeben diese Wörter eine Konserve: Frische Tomaten
+     * gehören zum Gemüse, passierte und stückige in den Vorratsschrank.
+     * Als einzelnes Stichwort ginge das nicht -- "Dose" allein sagt nur
+     * etwas über die Verpackung ("Kichererbsen Dose" sind Erbsen).
+     */
+    phrases: [
+      ['tomate', 'passiert'],
+      ['tomate', 'stueckig'],
+      ['tomate', 'gehackt'],
+      ['tomate', 'dose'],
+      ['tomate', 'konserve'],
+    ],
     keywords: [
-      'sauce', 'sosse', 'passata', 'ketchup', 'senf', 'mayonnaise', 'mayo',
+      'sauce', 'sosse', 'passata', 'passiert', 'stueckig', 'ketchup', 'senf',
+      'mayonnaise', 'mayo', 'salatcreme', 'salatmayonnaise',
+      // Marken, die für nichts anderes stehen als für die Ware selbst.
+      'miracel', 'thomy',
       'pesto', 'tomatenmark', 'mark', 'suppe', 'bruehe',
       'fond', 'ajvar', 'hummus', 'sugo', 'chutney', 'dressing',
     ],
@@ -105,7 +119,9 @@ export const CATEGORIES = [
     label: 'Fleisch & Fisch',
     icon: '🥩',
     keywords: [
-      'fleisch', 'hack', 'hackfleisch', 'wurst', 'schinken', 'salami', 'speck',
+      // "gehackt" steht auch hier: Die Kombination mit der Tomate hat
+      // Vorrang, allein bezeichnet es das Hackfleisch.
+      'fleisch', 'hack', 'hackfleisch', 'gehackt', 'wurst', 'schinken', 'salami', 'speck',
       'haehnchen', 'huhn', 'pute', 'rind', 'schwein', 'lamm', 'steak',
       'fisch', 'lachs', 'thunfisch', 'forelle', 'garnele', 'schnitzel',
       'frikadelle', 'bratwurst', 'gulasch', 'wuerstchen', 'wiener',
@@ -234,7 +250,15 @@ export function guessCategory(name) {
     }
   };
 
+  const hasStem = (stem) => words.some((word) => scoreWord(word, stem) > 0);
+
   for (const category of CATEGORIES) {
+    // Wortkombinationen zuerst: Sie sind spezifischer als jedes Einzelwort
+    // und sollen es deshalb schlagen.
+    for (const phrase of category.phrases ?? []) {
+      if (phrase.every(hasStem)) consider(category.id, 8000, 0);
+    }
+
     for (let i = 0; i < words.length; i++) {
       for (const marker of category.markers ?? []) {
         if (scoreWord(words[i], marker)) consider(category.id, 9000, i);

@@ -157,13 +157,27 @@ brauchbar:
   stehen im Deutschen hinten („Müsli Schoko", „Joghurt Erdbeere"), die Ware
   vorne.
 
-Ausnahmen sind eigens hinterlegt: „Tiefkühl" und „TK" schlagen als Marker
-alles andere (Tiefkühlerbsen sind Erbsen, gesucht werden sie aber im
+Manches ergibt sich aber erst aus der **Wortkombination**. Frische Tomaten
+gehören zum Gemüse, passierte und stückige in den Vorratsschrank — das lässt
+sich mit einzelnen Stichwörtern nicht trennen. Dafür gibt es `phrases`:
+Wortpaare, die zusammen gelten und jedes Einzelwort schlagen.
+
+```
+['tomate', 'passiert']   →  Saucen & Konserven
+['tomate', 'dose']       →  Saucen & Konserven
+```
+
+So bleibt „Dose" ohne Wirkung, wo es nur die Verpackung meint („Kichererbsen
+Dose" sind Erbsen), und „gehackt" darf gleichzeitig beim Hackfleisch stehen,
+ohne die gehackten Tomaten mitzunehmen.
+
+Zwei weitere Ausnahmen: „Tiefkühl" und „TK" schlagen als Marker sogar die
+Wortkombinationen (Tiefkühlerbsen sind Erbsen, gesucht werden sie aber im
 Gefrierfach), und „Kaffeebohne" steht in den Getränken, damit der Kaffee
 nicht bei den Hülsenfrüchten landet.
 
-Verpackungswörter wie „Dose" stehen bewusst in keiner Liste — sie
-beschreiben nicht den Inhalt.
+Ein paar Markennamen sind direkt hinterlegt, wo sie für nichts anderes
+stehen als für die Ware selbst — etwa Miracel Whip und Thomy bei den Saucen.
 
 Passt etwas nicht, sind zwei Wege möglich: die Kategorie am Produkt fest
 wählen, oder in `js/categories.js` einen Stamm ergänzen. Letzteres wirkt

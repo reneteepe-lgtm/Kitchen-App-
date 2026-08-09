@@ -26,7 +26,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.5.0';
+export const APP_VERSION = '1.5.1';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {

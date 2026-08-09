@@ -115,6 +115,39 @@ test('die Verpackung bestimmt nicht die Kategorie', () => {
   assert.equal(guessCategory('Mais Dose'), 'produce');
 });
 
+test('verarbeitete Tomaten sind Konserven, frische sind Gemüse', () => {
+  // Erst die Wortkombination macht aus der Tomate eine Konserve.
+  assert.equal(guessCategory('Tomaten passiert'), 'sauce');
+  assert.equal(guessCategory('Passierte Tomaten'), 'sauce');
+  assert.equal(guessCategory('Tomaten stückig'), 'sauce');
+  assert.equal(guessCategory('Stückige Tomaten 400 g'), 'sauce');
+  assert.equal(guessCategory('Gehackte Tomaten'), 'sauce');
+  assert.equal(guessCategory('Tomaten Dose'), 'sauce');
+
+  // Und das Gemüse bleibt Gemüse.
+  assert.equal(guessCategory('Tomaten'), 'produce');
+  assert.equal(guessCategory('Cocktailtomaten'), 'produce');
+  assert.equal(guessCategory('Tomaten Strauch'), 'produce');
+});
+
+test('eine Wortkombination schlägt das einzelne Wort, ein Marker aber sie', () => {
+  assert.equal(guessCategory('TK passierte Tomaten'), 'frozen');
+});
+
+test('Marken, die für nichts anderes stehen, sind zugeordnet', () => {
+  assert.equal(guessCategory('Miracel Whip'), 'sauce');
+  assert.equal(guessCategory('Miracel Whip Balance 500 ml'), 'sauce');
+  assert.equal(guessCategory('Thomy Delikatess Mayonnaise'), 'sauce');
+  assert.equal(guessCategory('Salatcreme'), 'sauce');
+});
+
+test('Gehacktes bleibt Fleisch', () => {
+  // "gehackt" gilt nur zusammen mit der Tomate, nicht für sich allein --
+  // sonst landete das Hackfleisch bei den Saucen.
+  assert.equal(guessCategory('Gehacktes gemischt'), 'meat');
+  assert.equal(guessCategory('Rinderhackfleisch'), 'meat');
+});
+
 test('bei gleichwertigen Treffern gewinnt das vordere Wort', () => {
   // Sorte und Marke stehen hinten, die Ware vorne.
   assert.equal(guessCategory('Müsli Schoko'), 'breakfast');
