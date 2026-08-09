@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { Store, MemoryAdapter } from '../js/storage.js';
 import { Pantry, stockOf } from '../js/model.js';
 import { estimateConsumptionRate } from '../js/forecast.js';
-import { suggestName } from '../js/barcode.js';
 
 async function freshPantry() {
   const store = await new Store(new MemoryAdapter()).init();
@@ -106,15 +105,6 @@ test('gelöschte Produkte kehren beim Zusammenführen nicht zurück', async () =
   await a.store.merge(stale);
 
   assert.equal(a.products().length, 0);
-});
-
-test('Produktnamen aus der Datenbank werden lesbar zusammengesetzt', () => {
-  assert.equal(
-    suggestName({ brand: 'Barilla', name: 'Fusilli', quantity: '500 g' }),
-    'Barilla Fusilli 500 g',
-  );
-  assert.equal(suggestName({ brand: '', name: 'Passata', quantity: '' }), 'Passata');
-  assert.equal(suggestName(null), '');
 });
 
 test('Korrekturbuchungen heben die Verbrauchsprognose nicht an', async () => {

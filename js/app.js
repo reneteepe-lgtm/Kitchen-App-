@@ -368,11 +368,21 @@ function toast(message, undoable = false) {
 async function startScan() {
   const dialog = $('#dlg-scan');
   const hint = $('#scan-hint');
-  hint.textContent = 'Barcode ins Bild halten…';
+  hint.textContent = 'Kamera wird gestartet…';
   dialog.showModal();
 
   try {
-    await scanner.start($('#scan-video'), (barcode) => handleScan(barcode, hint));
+    await scanner.start(
+      $('#scan-video'),
+      (barcode) => handleScan(barcode, hint),
+      (status) => {
+        // Auf Geräten ohne eingebaute Erkennung wird die Bibliothek beim
+        // ersten Scan nachgeladen. Ohne Rückmeldung wirkt die App in dem
+        // Moment eingefroren.
+        hint.textContent =
+          status === 'preparing' ? 'Scanner wird vorbereitet…' : 'Barcode ins Bild halten…';
+      },
+    );
   } catch (err) {
     hint.textContent = 'Kamera nicht verfügbar. Bitte den Zugriff erlauben.';
     console.error(err);

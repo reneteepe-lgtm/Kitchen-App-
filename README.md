@@ -15,8 +15,9 @@ lässt sie sich zum Startbildschirm hinzufügen und verhält sich dann wie eine 
   Mindestbestand liegt oder demnächst ausgeht.
 - **Mindesthaltbarkeit** — pro Charge erfassbar; die App warnt rechtzeitig und
   verbraucht immer zuerst, was zuerst abläuft.
-- **Barcode scannen** — Produkte per Kamera erfassen, Namen kommen aus der
-  offenen Produktdatenbank [Open Food Facts](https://world.openfoodfacts.org/).
+- **Barcode scannen** — Produkte per Kamera erfassen, auf Android wie auf
+  iPhone. Namen kommen aus der offenen Produktdatenbank
+  [Open Food Facts](https://world.openfoodfacts.org/).
 - **Rückgängig** — eine versehentliche Buchung ist ein Fingertipp weit weg.
 
 ## Loslegen
@@ -101,10 +102,27 @@ Zwei Feinheiten, die im Alltag den Unterschied machen:
 
 ## Barcode-Scan
 
-Erkannt wird mit der `BarcodeDetector`-Schnittstelle des Browsers, ohne
-Fremdbibliothek. Die gibt es auf Android (Chrome), auf iPhone und iPad bislang
-nicht — dort blendet die App den Kamera-Knopf aus, und Produkte werden von Hand
-angelegt. Der Barcode lässt sich dabei auch eintippen.
+Funktioniert auf beiden Systemen, aber auf zwei Wegen:
+
+- **Android** nutzt die eingebaute `BarcodeDetector`-Schnittstelle des
+  Browsers. Schnell und ohne zusätzlichen Download.
+- **iPhone und iPad** bekommen die Erkennung mitgeliefert
+  ([zbar-wasm](vendor/zbar-wasm/), ZBar als WebAssembly, rund 250 KB). Apple
+  hat die Schnittstelle nie implementiert, und weil dort alle Browser WebKit
+  verwenden, hilft auch kein anderer Browser. Der Kamerazugriff selbst
+  funktioniert auf iOS problemlos — es fehlt nur der Erkenner, und genau der
+  wird nachgereicht.
+
+Geladen wird die Bibliothek erst beim ersten Scan und nur dort, wo sie fehlt;
+Android-Geräte laden sie nie. Danach liegt sie im Cache des Service Workers,
+sodass auch das Scannen offline funktioniert.
+
+Beide Wege liefern denselben Code an dieselbe Stelle — sichtbar ist der
+Unterschied nur daran, dass auf iOS beim allerersten Scan kurz „Scanner wird
+vorbereitet…" steht.
+
+Der Kamerazugriff setzt in beiden Fällen HTTPS voraus. Über GitHub Pages,
+Cloudflare Pages oder Netlify ist das automatisch gegeben.
 
 ## Aufbau
 
@@ -118,8 +136,10 @@ js/storage.js       Persistenz, austauschbar für späteren Sync
 js/barcode.js       Kamera-Scan und Produktdatenbank
 js/format.js        Aufbereitung der Zahlen für die Anzeige
 js/app.js           Verdrahtung von Daten und Oberfläche
+vendor/zbar-wasm/   Barcode-Erkennung für iOS (LGPL, siehe Ordner-README)
 tests/              Tests der Rechenlogik
 ```
 
-Keine Abhängigkeiten, kein Build-Schritt. Was im Repository liegt, ist das,
-was im Browser läuft.
+Kein Build-Schritt: Was im Repository liegt, ist das, was im Browser läuft.
+Einzige Fremdkomponente ist die Barcode-Erkennung unter `vendor/` — und die
+wird nur auf Geräten geladen, die sie brauchen.

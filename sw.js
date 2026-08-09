@@ -24,6 +24,11 @@ const SHELL = [
   './js/forecast.js',
   './js/barcode.js',
   './js/format.js',
+  // Die Barcode-Erkennung für Geräte ohne eingebaute Schnittstelle (iOS).
+  // Muss mit in den Cache, sonst wäre der Scan dort das einzige, was
+  // offline nicht funktioniert.
+  './vendor/zbar-wasm/zbar-wasm.mjs',
+  './vendor/zbar-wasm/zbar.wasm',
 ];
 
 self.addEventListener('install', (event) => {
