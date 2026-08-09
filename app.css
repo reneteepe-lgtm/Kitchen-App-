@@ -517,13 +517,91 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 0;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 6px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
   font-size: 0.9375rem;
-  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
 }
 
 .lot-row:last-child {
-  border-bottom: 0;
+  margin-bottom: 0;
+}
+
+.lot-date {
+  color: var(--text-dim);
+}
+
+.lot-row.is-expired .lot-date,
+.lot-row.is-soon .lot-date {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* Umschalter im Einbuch-Dialog */
+.switch {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+.switch input {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.switch > span {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.switch .field-hint {
+  margin: 2px 0 0;
+  font-weight: 400;
+}
+
+/* Ein Datumsfeld je Packung */
+.date-list {
+  margin-bottom: 16px;
+  max-height: 44vh;
+  overflow-y: auto;
+}
+
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.date-row > span {
+  flex: 0 0 5.5em;
+  font-size: 0.875rem;
+  color: var(--text-dim);
+}
+
+.date-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
 }
 
 .lot-row.is-expired {

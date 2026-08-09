@@ -13,8 +13,9 @@ lässt sie sich zum Startbildschirm hinzufügen und verhält sich dann wie eine 
   weggeht, und rechnet daraus aus, wann der Vorrat voraussichtlich leer ist.
 - **Einkaufsliste** — füllt sich automatisch mit allem, was leer ist, unter dem
   Mindestbestand liegt oder demnächst ausgeht.
-- **Mindesthaltbarkeit** — pro Charge erfassbar; die App warnt rechtzeitig und
-  verbraucht immer zuerst, was zuerst abläuft.
+- **Mindesthaltbarkeit** — wird bei jedem Einbuchen abgefragt. Liegen mehrere
+  Packungen im Schrank, darf jede ihr eigenes Datum haben; die App warnt
+  rechtzeitig und verbraucht immer zuerst, was zuerst abläuft.
 - **Barcode scannen** — Produkte per Kamera erfassen, auf Android wie auf
   iPhone. Namen kommen aus der offenen Produktdatenbank
   [Open Food Facts](https://world.openfoodfacts.org/).
@@ -121,6 +122,33 @@ Zwei Feinheiten, die im Alltag den Unterschied machen:
 - **Bestandskorrekturen zählen nicht als Verbrauch.** Eine Inventur ist keine
   Aussage darüber, wie schnell etwas weggeht, und darf die Prognose nicht
   verfälschen.
+
+## Haltbarkeit und Chargen
+
+Der Bestand hängt nicht am Produkt, sondern an **Chargen**. Eine Charge ist
+„so viele Packungen, die bis zu diesem Datum halten". Dieselbe Sorte kann
+deshalb mehrfach im Schrank stehen, mit je eigenem Datum — genau so, wie es
+tatsächlich der Fall ist.
+
+Nach dem Datum gefragt wird überall dort, wo Bestand hinzukommt: beim Anlegen
+eines Produkts, beim Einbuchen über `+` und nach jedem Scan. Sind es mehrere
+Packungen, blendet der Dialog einen Umschalter ein: **„Unterschiedlich lange
+haltbar"** gibt jeder Packung ein eigenes Feld. Gleiche Daten fasst die App
+danach wieder zu einer Charge zusammen, damit die Liste übersichtlich bleibt.
+
+Nachträglich lässt sich alles korrigieren: In der Detailansicht eines Produkts
+ist jede Charge antippbar. Dort kann man
+
+- ein Datum nachtragen oder ändern,
+- einen Teil der Packungen herauslösen und ihm ein eigenes Datum geben
+  („Gilt für wie viele Packungen?"),
+- eine Charge als entsorgt buchen.
+
+Umsortieren und Aufteilen ändern den Bestand nicht und werden deshalb auch
+nicht gebucht — sie beschreiben nur genauer, was ohnehin da ist. Entsorgtes
+wird als `discard` gebucht und **nicht** als Verbrauch: Was im Müll landet,
+sagt nichts darüber aus, wie schnell etwas aufgebraucht wird, und würde die
+Prognose sonst zu hoch ansetzen.
 
 ## Barcode-Scan
 

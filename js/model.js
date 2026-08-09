@@ -196,23 +196,123 @@ export class Pantry {
     return true;
   }
 
-  /** Einkauf einbuchen: neue Charge anlegen. */
+  /** Einkauf einbuchen: eine neue Charge anlegen. */
   async addStock(productId, qty, bestBefore = null) {
-    const amount = Math.max(1, Math.round(Number(qty) || 1));
-    const lot = {
-      id: newId('l'),
-      productId,
-      qty: amount,
-      bestBefore: bestBefore || null,
-      addedAt: new Date().toISOString(),
-    };
-    const event = this.#event(productId, EVENT_TYPES.PURCHASE, amount, { lotId: lot.id });
-    this.#snapshot([lot.id], [event.id], `${amount} eingebucht`);
+    const [lot] = await this.addStockBatches(productId, [{ qty, bestBefore }]);
+    return lot;
+  }
+
+  /**
+   * Einkauf mit unterschiedlichen Haltbarkeitsdaten einbuchen.
+   *
+   * Drei Joghurts aus demselben Einkauf können drei verschiedene Daten
+   * tragen. Jedes Datum bekommt deshalb seine eigene Charge -- nur so kann
+   * die App später sagen, welche Packung zuerst weg muss.
+   *
+   * Gebucht wird trotzdem ein einziger Einkauf: Für die Verbrauchsprognose
+   * zählt, wie viel gekauft wurde, nicht auf wie viele Daten es sich
+   * verteilt.
+   *
+   * @param {string} productId
+   * @param {Array<{qty:number, bestBefore?:string|null}>} batches
+   * @returns {Promise<Array>} die angelegten Chargen
+   */
+  async addStockBatches(productId, batches) {
+    const now = new Date().toISOString();
+    const lots = [];
+
+    // Gleiche Daten zusammenfassen: Wer dreimal dasselbe Datum einträgt,
+    // will eine Charge zu drei Stück, nicht drei Zeilen im Schrank.
+    const byDate = new Map();
+    for (const batch of batches ?? []) {
+      const amount = Math.max(0, Math.round(Number(batch?.qty) || 0));
+      if (amount <= 0) continue;
+      const key = batch?.bestBefore || '';
+      byDate.set(key, (byDate.get(key) ?? 0) + amount);
+    }
+
+    for (const [bestBefore, qty] of byDate) {
+      lots.push({ id: newId('l'), productId, qty, bestBefore: bestBefore || null, addedAt: now });
+    }
+    if (!lots.length) return [];
+
+    const total = lots.reduce((sum, lot) => sum + lot.qty, 0);
+    const event = this.#event(productId, EVENT_TYPES.PURCHASE, total, { lotId: lots[0].id });
+    this.#snapshot(lots.map((lot) => lot.id), [event.id], `${total} eingebucht`);
+
     await this.store.putMany([
-      ['lots', lot],
+      ...lots.map((lot) => ['lots', lot]),
       ['events', event],
     ]);
-    return lot;
+    return lots;
+  }
+
+  /**
+   * Das Haltbarkeitsdatum einer vorhandenen Charge setzen oder entfernen.
+   *
+   * Bewusst ohne Buchung: Am Bestand ändert sich nichts, und für die
+   * Verbrauchsprognose ist ein nachgetragenes Datum ohne Bedeutung.
+   */
+  async setLotExpiry(lotId, bestBefore) {
+    const lot = this.store.byId('lots', lotId);
+    if (!lot) return null;
+    this.#snapshot([lot.id], [], 'Haltbarkeit geändert');
+    return this.store.put('lots', { ...lot, bestBefore: bestBefore || null });
+  }
+
+  /**
+   * Einen Teil einer Charge herauslösen und ihm ein eigenes Datum geben.
+   *
+   * Für den Fall, dass erst beim Einräumen auffällt, dass nicht alle
+   * Packungen gleich lang halten. Der Bestand bleibt unverändert, es wird
+   * nur anders aufgeteilt -- deshalb auch hier keine Buchung.
+   *
+   * @returns {Promise<object|null>} die abgetrennte Charge
+   */
+  async splitLot(lotId, qty, bestBefore) {
+    const lot = this.store.byId('lots', lotId);
+    if (!lot) return null;
+
+    const amount = Math.max(1, Math.round(Number(qty) || 1));
+    // Die ganze Charge abzutrennen hieße nur, ihr Datum zu ändern.
+    if (amount >= lot.qty) {
+      await this.setLotExpiry(lotId, bestBefore);
+      return this.store.byId('lots', lotId);
+    }
+
+    const split = {
+      id: newId('l'),
+      productId: lot.productId,
+      qty: amount,
+      bestBefore: bestBefore || null,
+      addedAt: lot.addedAt,
+    };
+    this.#snapshot([lot.id, split.id], [], 'Charge aufgeteilt');
+    await this.store.putMany([
+      ['lots', { ...lot, qty: lot.qty - amount }],
+      ['lots', split],
+    ]);
+    return split;
+  }
+
+  /**
+   * Eine Charge entsorgen -- abgelaufen, verdorben, aussortiert.
+   *
+   * Wird als `discard` gebucht und nicht als Verbrauch: Weggeworfenes sagt
+   * nichts darüber aus, wie schnell etwas aufgebraucht wird, und würde die
+   * Prognose sonst zu hoch ansetzen.
+   */
+  async discardLot(lotId) {
+    const lot = this.store.byId('lots', lotId);
+    if (!lot || lot.qty <= 0) return false;
+
+    const event = this.#event(lot.productId, EVENT_TYPES.DISCARD, lot.qty, { lotId: lot.id });
+    this.#snapshot([lot.id], [event.id], `${lot.qty} entsorgt`);
+    await this.store.putMany([
+      ['lots', { ...lot, qty: 0 }],
+      ['events', event],
+    ]);
+    return true;
   }
 
   /**

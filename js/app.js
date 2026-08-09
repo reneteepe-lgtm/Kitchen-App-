@@ -24,7 +24,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -50,6 +50,10 @@ function render() {
   renderExpiry();
   renderBadges();
   renderStats();
+  // Die Detailansicht ist ein eigener Dialog, der über der Liste liegt.
+  // Ohne diesen Aufruf zeigte sie nach einer Änderung weiter den Stand von
+  // vor dem Öffnen -- man ändert eine Haltbarkeit und sieht das alte Datum.
+  if (detailProductId) renderDetail(detailProductId);
 }
 
 function matchesSearch(product) {
@@ -206,9 +210,22 @@ function renderStats() {
 
 // --- Detailansicht --------------------------------------------------------
 
+/** Welches Produkt die Detailansicht gerade zeigt, oder null. */
+let detailProductId = null;
+
 function openDetail(productId) {
+  if (!store.byId('products', productId)) return;
+  detailProductId = productId;
+  renderDetail(productId);
+  $('#dlg-detail').showModal();
+}
+
+function renderDetail(productId) {
   const product = store.byId('products', productId);
-  if (!product) return;
+  if (!product) {
+    $('#dlg-detail').close();
+    return;
+  }
 
   const assessment = pantry.assess(product);
   const body = $('#detail-body');
@@ -266,15 +283,23 @@ function openDetail(productId) {
   if (lots.length === 0) {
     lotSection.appendChild(el('p', 'field-hint', 'Nichts da.'));
   } else {
+    lotSection.appendChild(
+      el('p', 'field-hint', 'Antippen, um die Haltbarkeit zu ändern oder Packungen aufzuteilen.'),
+    );
     for (const lot of lots) {
       const days = lot.bestBefore ? daysUntil(lot.bestBefore) : null;
-      const cls =
-        days === null ? 'lot-row' : days < 0 ? 'lot-row is-expired' : days <= 5 ? 'lot-row is-soon' : 'lot-row';
-      const row = el('div', cls);
+      const state = days === null ? '' : days < 0 ? ' is-expired' : days <= 5 ? ' is-soon' : '';
+      const row = el('button', `lot-row${state}`);
+      row.type = 'button';
       row.appendChild(el('span', null, plural(lot.qty, 'Packung', 'Packungen')));
       row.appendChild(
-        el('span', null, lot.bestBefore ? `MHD ${formatDateLong(lot.bestBefore)}` : 'ohne MHD'),
+        el(
+          'span',
+          'lot-date',
+          lot.bestBefore ? `bis ${formatDateLong(lot.bestBefore)}` : 'ohne Datum',
+        ),
       );
+      row.addEventListener('click', () => openLotDialog(product, lot));
       lotSection.appendChild(row);
     }
   }
@@ -330,7 +355,6 @@ function openDetail(productId) {
   actions.appendChild(closeRow);
 
   body.appendChild(actions);
-  $('#dlg-detail').showModal();
 }
 
 // --- Dialoge --------------------------------------------------------------
@@ -346,18 +370,101 @@ function openProductDialog(product = null, prefill = {}) {
   // Beim Bearbeiten wäre ein zweites Bestandsfeld neben der Inventur verwirrend.
   $('#product-initial').hidden = !!product;
   $('#product-stock').value = String(prefill.stock ?? 1);
+  $('#product-bb').value = '';
   $('#dlg-product').showModal();
   if (!product) setTimeout(() => $('#product-name').focus(), 50);
 }
 
-let stockTarget = null;
+let lotTarget = null;
 
-function openStockDialog(product) {
+/**
+ * Dialog für eine einzelne Charge: Datum ändern oder einen Teil davon mit
+ * einem eigenen Datum herauslösen.
+ */
+function openLotDialog(product, lot) {
+  lotTarget = lot;
+  $('#lot-title').textContent = product.name;
+  $('#lot-info').textContent = lot.bestBefore
+    ? `${plural(lot.qty, 'Packung', 'Packungen')}, haltbar bis ${formatDateLong(lot.bestBefore)}`
+    : `${plural(lot.qty, 'Packung', 'Packungen')} ohne Haltbarkeitsdatum`;
+  $('#lot-bb').value = lot.bestBefore ?? '';
+  // Aufteilen ergibt nur Sinn, wenn mehr als eine Packung in der Charge ist.
+  $('#lot-split-field').hidden = lot.qty < 2;
+  $('#lot-qty').max = String(lot.qty);
+  $('#lot-qty').value = String(lot.qty);
+  $('#dlg-lot').showModal();
+}
+
+let stockTarget = null;
+/** Ob der Einbuch-Dialog aus dem Scanner heraus geöffnet wurde. */
+let stockFromScan = false;
+
+function openStockDialog(product, { fromScan = false } = {}) {
   stockTarget = product;
+  stockFromScan = fromScan;
   $('#stock-title').textContent = `${product.name} einbuchen`;
   $('#stock-qty').value = '1';
   $('#stock-bb').value = '';
+  $('#stock-split').checked = false;
+  $('#stock-again-row').hidden = !fromScan;
+  syncStockDialog();
   $('#dlg-stock').showModal();
+}
+
+/**
+ * Hält den Einbuch-Dialog im Einklang mit Menge und Umschalter.
+ *
+ * Bei einer einzelnen Packung gibt es nichts aufzuteilen -- dann bleibt
+ * der Umschalter verborgen und es steht nur ein Datumsfeld da.
+ */
+function syncStockDialog() {
+  const qty = Math.max(1, Math.round(Number($('#stock-qty').value) || 1));
+  const canSplit = qty > 1;
+  const split = canSplit && $('#stock-split').checked;
+
+  $('#stock-split-row').hidden = !canSplit;
+  $('#stock-single').hidden = split;
+  $('#stock-dates').hidden = !split;
+
+  if (!split) return;
+
+  // Vorhandene Eingaben beim Ändern der Menge nicht wegwerfen.
+  const previous = [...$('#stock-dates').querySelectorAll('input')].map((i) => i.value);
+  const list = $('#stock-dates');
+  list.replaceChildren();
+
+  for (let i = 0; i < qty; i++) {
+    const row = el('label', 'date-row');
+    row.appendChild(el('span', null, `Packung ${i + 1}`));
+    const input = el('input');
+    input.type = 'date';
+    input.value = previous[i] ?? $('#stock-bb').value ?? '';
+    row.appendChild(input);
+    list.appendChild(row);
+  }
+}
+
+/** Liest aus dem Dialog, was einzubuchen ist. */
+function stockDialogBatches() {
+  const qty = Math.max(1, Math.round(Number($('#stock-qty').value) || 1));
+  if ($('#stock-dates').hidden) {
+    return [{ qty, bestBefore: $('#stock-bb').value || null }];
+  }
+  return [...$('#stock-dates').querySelectorAll('input')].map((input) => ({
+    qty: 1,
+    bestBefore: input.value || null,
+  }));
+}
+
+async function submitStockDialog() {
+  if (!stockTarget) return;
+  const product = stockTarget;
+  const batches = stockDialogBatches();
+  const total = batches.reduce((sum, b) => sum + b.qty, 0);
+
+  await pantry.addStockBatches(product.id, batches);
+  toast(`${product.name}: ${total} eingebucht`, true);
+  stockTarget = null;
 }
 
 function toast(message, undoable = false) {
@@ -405,11 +512,12 @@ async function handleScan(barcode, hint) {
   const known = pantry.findByBarcode(barcode);
 
   if (known) {
-    // Bekanntes Produkt: direkt einbuchen, ohne den Scanner zu verlassen --
-    // beim Einräumen scannt man mehrere Sachen hintereinander.
-    await pantry.addStock(known.id, 1);
-    hint.textContent = `${known.name}: eingebucht (${stockOf(pantry.lots(), known.id)} da)`;
+    // Nicht stillschweigend einbuchen: Ohne Rückfrage ginge das
+    // Haltbarkeitsdatum verloren, und genau beim Einräumen nach dem Einkauf
+    // hat man die Packung in der Hand und kann es ablesen.
     navigator.vibrate?.(60);
+    stopScan();
+    openStockDialog(known, { fromScan: true });
     return;
   }
 
@@ -489,6 +597,12 @@ function wire() {
     button.addEventListener('click', () => button.closest('dialog').close());
   }
 
+  // Merken, dass die Detailansicht zu ist -- sonst würde sie bei jeder
+  // späteren Änderung im Hintergrund weitergezeichnet.
+  $('#dlg-detail').addEventListener('close', () => {
+    detailProductId = null;
+  });
+
   $('#form-product').addEventListener('submit', async (e) => {
     const name = $('#product-name').value.trim();
     if (!name) {
@@ -504,19 +618,44 @@ function wire() {
     } else {
       const product = await pantry.createProduct({ name, minStock, barcode });
       const initial = Number($('#product-stock').value) || 0;
-      if (initial > 0) await pantry.addStock(product.id, initial);
+      if (initial > 0) await pantry.addStock(product.id, initial, $('#product-bb').value || null);
       toast(`${name} angelegt`);
     }
     editingProduct = null;
   });
 
-  $('#form-stock').addEventListener('submit', async () => {
-    if (!stockTarget) return;
-    const qty = Number($('#stock-qty').value) || 1;
-    const bestBefore = $('#stock-bb').value || null;
-    await pantry.addStock(stockTarget.id, qty, bestBefore);
-    toast(`${stockTarget.name}: ${qty} eingebucht`, true);
-    stockTarget = null;
+  $('#stock-qty').addEventListener('input', syncStockDialog);
+  $('#stock-split').addEventListener('change', syncStockDialog);
+  $('#form-stock').addEventListener('submit', submitStockDialog);
+
+  // Beim Einräumen scannt man mehrere Sachen hintereinander -- dieser Weg
+  // führt nach dem Einbuchen direkt zurück vor die Kamera.
+  $('#stock-again').addEventListener('click', async () => {
+    await submitStockDialog();
+    $('#dlg-stock').close();
+    startScan();
+  });
+
+  $('#form-lot').addEventListener('submit', async () => {
+    if (!lotTarget) return;
+    const bestBefore = $('#lot-bb').value || null;
+    const qty = Number($('#lot-qty').value) || lotTarget.qty;
+
+    if (qty >= lotTarget.qty) await pantry.setLotExpiry(lotTarget.id, bestBefore);
+    else await pantry.splitLot(lotTarget.id, qty, bestBefore);
+
+    toast('Haltbarkeit gespeichert', true);
+    lotTarget = null;
+  });
+
+  $('#lot-discard').addEventListener('click', async () => {
+    if (!lotTarget) return;
+    const count = lotTarget.qty;
+    await pantry.discardLot(lotTarget.id);
+    $('#dlg-lot').close();
+    // Als Entsorgung gebucht, damit die Prognose nicht fälschlich steigt.
+    toast(`${plural(count, 'Packung', 'Packungen')} entsorgt`, true);
+    lotTarget = null;
   });
 
   $('#toast-undo').addEventListener('click', async () => {
