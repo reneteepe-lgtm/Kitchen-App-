@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { suggestProduct, stripBrand, isNativeScanSupported, ZBAR_TYPES } from '../js/barcode.js';
+import { suggestProduct, stripBrand, isNativeScanSupported, ZBAR_TYPES, ZBAR_ENABLED } from '../js/barcode.js';
 
 const VENDOR = new URL('../vendor/zbar-wasm/zbar-wasm.mjs', import.meta.url);
 
@@ -80,6 +80,32 @@ test('die Formatnamen stimmen mit denen der ZBar-Bibliothek überein', async () 
   for (const name of ZBAR_TYPES) {
     assert.ok(bundle.includes(name), `${name} kommt in der Bibliothek nicht vor`);
   }
+});
+
+/**
+ * Dieselbe Kopplung von der anderen Seite: Diese Namen schalten die Formate
+ * in ZBar überhaupt erst ein. Stimmt einer nicht, sucht der Scanner nach
+ * einem Format, das es nicht gibt -- und findet stillschweigend nie etwas.
+ */
+test('die eingeschalteten Formate heißen in der Bibliothek genauso', async () => {
+  const bundle = await readFile(VENDOR, 'utf8');
+  for (const name of ZBAR_ENABLED) {
+    assert.ok(bundle.includes(name), `${name} kommt in der Bibliothek nicht vor`);
+  }
+});
+
+test('eingeschaltet wird nur, was auch angenommen wird', async () => {
+  // Sonst liefe die Erkennung für ein Format, das hinterher verworfen wird.
+  for (const name of ZBAR_ENABLED) {
+    assert.ok(ZBAR_TYPES.has(name), `${name} wird eingeschaltet, aber nicht angenommen`);
+  }
+});
+
+test('ISBN wird angenommen, aber nicht eigens eingeschaltet', async () => {
+  // ISBN-Codes sind EAN-13 und kommen über ZBAR_EAN13 mit herein. Eigens
+  // eingeschaltet kosteten sie nur Rechenzeit an jedem Bild.
+  assert.ok(ZBAR_TYPES.has('ZBAR_ISBN13'));
+  assert.ok(!ZBAR_ENABLED.includes('ZBAR_ISBN13'));
 });
 
 test('QR-Codes werden bewusst nicht als Produktcode akzeptiert', async () => {

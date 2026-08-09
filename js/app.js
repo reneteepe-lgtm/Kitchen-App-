@@ -33,7 +33,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.10.0';
+export const APP_VERSION = '1.11.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -830,17 +830,18 @@ async function startScan() {
   dialog.showModal();
 
   try {
-    await scanner.start(
-      $('#scan-video'),
-      (barcode) => handleScan(barcode, hint),
-      (status) => {
+    await scanner.start($('#scan-video'), (barcode) => handleScan(barcode, hint), {
+      onStatus: (status) => {
         // Auf Geräten ohne eingebaute Erkennung wird die Bibliothek beim
         // ersten Scan nachgeladen. Ohne Rückmeldung wirkt die App in dem
         // Moment eingefroren.
         hint.textContent =
           status === 'preparing' ? 'Scanner wird vorbereitet…' : 'Barcode ins Bild halten…';
       },
-    );
+      // Der weiße Rahmen ist nicht bloß Zierde: Sein Inhalt wird zuerst und
+      // in voller Schärfe durchsucht.
+      frameEl: $('.scan-frame'),
+    });
   } catch (err) {
     hint.textContent = 'Kamera nicht verfügbar. Bitte den Zugriff erlauben.';
     console.error(err);
