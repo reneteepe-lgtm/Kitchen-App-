@@ -218,6 +218,51 @@ main {
   display: none;
 }
 
+/* Überschrift eines Kategorie-Blocks im Vorrat */
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 4px 2px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.group-head:first-child {
+  margin-top: 0;
+}
+
+.group-icon {
+  font-size: 1rem;
+  text-transform: none;
+}
+
+.group-count {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Auswahlfeld im Produktdialog */
+.field select {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
 /* Die Antwort auf "haben wir das noch?" */
 .answer {
   display: flex;

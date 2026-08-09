@@ -141,13 +141,16 @@ export class Pantry {
     return searchProducts(this.products(), query, (product) => stockOf(lots, product.id));
   }
 
-  async createProduct({ name, barcode = null, minStock = 1, note = '', suggest = true }) {
+  async createProduct({ name, barcode = null, minStock = 1, note = '', suggest = true, category = null }) {
     const product = {
       id: newId('p'),
       name: name.trim(),
       barcode: barcode || null,
       minStock: Number(minStock) || 0,
       note,
+      // Leer lassen ist erlaubt: Dann wird die Kategorie bei der Anzeige aus
+      // dem Namen abgeleitet, und eine spätere Korrektur überschreibt sie.
+      category: category || null,
       // Ob die App dieses Produkt von sich aus zum Nachkaufen vorschlägt.
       suggest: suggest !== false,
       snoozedUntil: null,

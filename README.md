@@ -8,7 +8,9 @@ lässt sie sich zum Startbildschirm hinzufügen und verhält sich dann wie eine 
 
 ## Was sie kann
 
-- **Vorrat sehen** — alle Produkte mit Bestand in Packungen, auf einen Blick.
+- **Vorrat sehen** — alle Produkte mit Bestand in Packungen, nach Fächern
+  sortiert wie in der Küche: Nudeln & Reis, Saucen, Kühlschrank, Haushalt.
+  Einsortiert wird automatisch anhand des Namens.
 - **Verbrauch lernen** — aus jeder Buchung schätzt die App, wie schnell etwas
   weggeht, und rechnet daraus aus, wann der Vorrat voraussichtlich leer ist.
 - **Nachschlagen** — „Haben wir noch …?" beantwortet die App direkt mit *Ja,
@@ -126,6 +128,46 @@ Zwei Feinheiten, die im Alltag den Unterschied machen:
 - **Bestandskorrekturen zählen nicht als Verbrauch.** Eine Inventur ist keine
   Aussage darüber, wie schnell etwas weggeht, und darf die Prognose nicht
   verfälschen.
+
+## Kategorien
+
+Der Vorrat ist in dreizehn Fächer geteilt, in der Reihenfolge, in der man
+eine Küche durchgeht — Trockenvorrat, Kühlschrank, Frisches, Getränke,
+Haushalt. Leere Fächer werden nicht angezeigt.
+
+Einsortiert wird **automatisch anhand des Namens**. Niemand muss beim
+Erfassen eine Kategorie auswählen, und bereits erfasste Produkte landen
+sofort im richtigen Fach, ohne dass die gespeicherten Daten angefasst
+werden. Wer will, wählt im Produktdialog eine feste Kategorie — die gilt
+dann und wird nie überstimmt.
+
+### Wie die Zuordnung rät
+
+Jedes Fach hat eine Liste von Wortstämmen. Getroffen wird ein Stamm, wenn
+ein Wort des Produktnamens damit anfängt oder aufhört — deutsche
+Zusammensetzungen liefen sonst ins Leere. Drei Regeln machen das Ergebnis
+brauchbar:
+
+- **Das letzte Glied entscheidet.** Im Deutschen bestimmt das Grundwort die
+  Sache: „Tomatensauce" ist eine Sauce, „Reismehl" ist Mehl. Ohne diesen
+  Vorrang landeten beide im falschen Fach.
+- **Kurze Stämme gelten nur als ganzes Wort.** Sonst macht „Ei" aus jedem
+  „Kartoffelbrei" ein Milchprodukt.
+- **Bei gleich starkem Treffer gewinnt das vordere Wort.** Sorte und Marke
+  stehen im Deutschen hinten („Müsli Schoko", „Joghurt Erdbeere"), die Ware
+  vorne.
+
+Ausnahmen sind eigens hinterlegt: „Tiefkühl" und „TK" schlagen als Marker
+alles andere (Tiefkühlerbsen sind Erbsen, gesucht werden sie aber im
+Gefrierfach), und „Kaffeebohne" steht in den Getränken, damit der Kaffee
+nicht bei den Hülsenfrüchten landet.
+
+Verpackungswörter wie „Dose" stehen bewusst in keiner Liste — sie
+beschreiben nicht den Inhalt.
+
+Passt etwas nicht, sind zwei Wege möglich: die Kategorie am Produkt fest
+wählen, oder in `js/categories.js` einen Stamm ergänzen. Letzteres wirkt
+für alle Produkte auf einmal.
 
 ## Nachschlagen und Einkaufsliste
 
@@ -251,6 +293,7 @@ js/model.js         Produkte, Chargen, Buchungen
 js/storage.js       Persistenz, austauschbar für späteren Sync
 js/barcode.js       Kamera-Scan und Produktdatenbank
 js/search.js        Nachsichtige Suche und die Antwort "haben wir das?"
+js/categories.js    Fächer und die automatische Zuordnung nach Namen
 js/format.js        Aufbereitung der Zahlen für die Anzeige
 js/app.js           Verdrahtung von Daten und Oberfläche
 vendor/zbar-wasm/   Barcode-Erkennung für iOS (LGPL, siehe Ordner-README)

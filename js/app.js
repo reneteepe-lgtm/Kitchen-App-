@@ -10,6 +10,7 @@ import { Store, LocalStorageAdapter } from './storage.js';
 import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.js';
 import { BarcodeScanner, isScanSupported, lookupBarcode, suggestName } from './barcode.js';
 import { stockAnswer } from './search.js';
+import { CATEGORIES, categoryById, categoryOf, groupByCategory, guessCategory } from './categories.js';
 import {
   describeForecast,
   describeRate,
@@ -25,7 +26,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.4.0';
+export const APP_VERSION = '1.5.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -98,16 +99,32 @@ function renderPantry() {
   const list = $('#pantry-list');
   const searching = searchTerm.length > 0;
 
-  // Bei einer Suche bestimmt die Trefferqualität die Reihenfolge, sonst
-  // bleibt die Liste alphabetisch.
-  const items = searching
-    ? pantry.search(searchTerm).map((match) => pantry.assess(match.product))
-    : pantry.assessAll();
+  if (searching) {
+    // Bei einer Suche zählt die Trefferqualität, nicht das Fach: Wer sucht,
+    // will die Antwort oben sehen und nicht erst eine Überschrift.
+    const items = pantry.search(searchTerm).map((match) => pantry.assess(match.product));
+    list.replaceChildren(...items.map(pantryRow));
+    renderSearchAnswer(pantry.search(searchTerm));
+    $('#pantry-empty').hidden = true;
+    return;
+  }
 
-  list.replaceChildren(...items.map(pantryRow));
-  renderSearchAnswer(searching ? pantry.search(searchTerm) : null);
+  renderSearchAnswer(null);
+  const items = pantry.assessAll();
 
-  $('#pantry-empty').hidden = items.length > 0 || searching;
+  // Nach Fächern gruppiert, damit sich der Vorrat wie ein Schrank liest.
+  const groups = groupByCategory(items);
+  const nodes = [];
+  for (const { category, items: entries } of groups) {
+    const heading = el('li', 'group-head');
+    heading.appendChild(el('span', 'group-icon', category.icon));
+    heading.appendChild(el('span', null, category.label));
+    heading.appendChild(el('span', 'group-count', String(entries.length)));
+    nodes.push(heading, ...entries.map(pantryRow));
+  }
+
+  list.replaceChildren(...nodes);
+  $('#pantry-empty').hidden = items.length > 0;
   $('#pantry-empty').innerHTML =
     'Noch nichts erfasst.<br />Leg oben rechts das erste Produkt an oder scanne einen Barcode.';
 }
@@ -386,10 +403,15 @@ function renderDetail(productId) {
   const body = $('#detail-body');
   body.replaceChildren();
 
+  const category = categoryById(categoryOf(product));
   const head = el('div', 'detail-head');
   head.appendChild(el('h2', null, product.name));
   head.appendChild(
-    el('p', 'detail-sub', `${assessment.stock} im Vorrat · Mindestbestand ${product.minStock}`),
+    el(
+      'p',
+      'detail-sub',
+      `${category.icon} ${category.label} · ${assessment.stock} im Vorrat · Mindestbestand ${product.minStock}`,
+    ),
   );
   body.appendChild(head);
 
@@ -518,6 +540,30 @@ let editingProduct = null;
 /** Einkaufslisten-Eintrag, der mit dem Anlegen erledigt ist. */
 let productWishId = null;
 
+/** Füllt die Kategorieauswahl einmalig. */
+function fillCategorySelect() {
+  const select = $('#product-category');
+  const auto = el('option', null, 'Automatisch');
+  auto.value = '';
+  select.appendChild(auto);
+  for (const category of CATEGORIES) {
+    const option = el('option', null, `${category.icon}  ${category.label}`);
+    option.value = category.id;
+    select.appendChild(option);
+  }
+}
+
+/** Zeigt bei "Automatisch" an, wohin das Produkt gerade einsortiert würde. */
+function syncCategoryHint() {
+  const hint = $('#product-category-hint');
+  if ($('#product-category').value) {
+    hint.textContent = 'Fest gewählt.';
+    return;
+  }
+  const guess = categoryById(guessCategory($('#product-name').value));
+  hint.textContent = `Nach dem Namen: ${guess.icon} ${guess.label}`;
+}
+
 function openProductDialog(product = null, prefill = {}) {
   editingProduct = product;
   productWishId = prefill.wishId ?? null;
@@ -527,6 +573,11 @@ function openProductDialog(product = null, prefill = {}) {
   $('#product-barcode').value = product?.barcode ?? prefill.barcode ?? '';
   // Fehlt das Feld (Daten aus einer älteren Fassung), gilt "vorschlagen".
   $('#product-suggest').checked = product ? product.suggest !== false : true;
+
+  // "Automatisch" heißt: aus dem Namen ableiten, auch wenn der sich später
+  // noch ändert. Erst eine bewusste Wahl legt die Kategorie fest.
+  $('#product-category').value = product?.category ?? '';
+  syncCategoryHint();
   // Beim Bearbeiten wäre ein zweites Bestandsfeld neben der Inventur verwirrend.
   $('#product-initial').hidden = !!product;
   $('#product-stock').value = String(prefill.stock ?? 1);
@@ -781,6 +832,10 @@ function wire() {
     renderWishHint('');
   });
 
+  fillCategorySelect();
+  $('#product-category').addEventListener('change', syncCategoryHint);
+  $('#product-name').addEventListener('input', syncCategoryHint);
+
   $('#btn-add').addEventListener('click', () => openProductDialog());
   $('#btn-scan').hidden = !isScanSupported();
   $('#btn-scan').addEventListener('click', startScan);
@@ -807,12 +862,13 @@ function wire() {
     const minStock = Number($('#product-min').value) || 0;
     const barcode = $('#product-barcode').value.trim() || null;
     const suggest = $('#product-suggest').checked;
+    const category = $('#product-category').value || null;
 
     if (editingProduct) {
-      await pantry.updateProduct(editingProduct, { name, minStock, barcode, suggest });
+      await pantry.updateProduct(editingProduct, { name, minStock, barcode, suggest, category });
       toast(`${name} gespeichert`);
     } else {
-      const product = await pantry.createProduct({ name, minStock, barcode, suggest });
+      const product = await pantry.createProduct({ name, minStock, barcode, suggest, category });
       const initial = Number($('#product-stock').value) || 0;
       if (initial > 0) await pantry.addStock(product.id, initial, $('#product-bb').value || null);
       if (productWishId) await pantry.removeWish(productWishId);
