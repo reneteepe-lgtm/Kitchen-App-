@@ -71,6 +71,31 @@ test('unähnliche Wörter gleicher Länge sind kein Treffer', () => {
   assert.deepEqual(namesFor('zucker'), []);
 });
 
+test('auch die Marke ist suchbar', () => {
+  const branded = [
+    { id: 'a', name: 'Tomaten passiert', brand: 'Baresa', barcode: null },
+    { id: 'b', name: 'Passata', brand: 'Mutti', barcode: null },
+  ];
+  const found = searchProducts(branded, 'baresa', () => 1);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].product.name, 'Tomaten passiert');
+});
+
+test('der Name wiegt schwerer als die Marke', () => {
+  const branded = [
+    { id: 'a', name: 'Kekse', brand: 'Passata GmbH', barcode: null },
+    { id: 'b', name: 'Passata 400 g', brand: 'Mutti', barcode: null },
+  ];
+  const found = searchProducts(branded, 'passata', () => 1);
+  assert.equal(found[0].product.name, 'Passata 400 g');
+});
+
+test('Produkte ohne Marke stören die Suche nicht', () => {
+  const mixed = [{ id: 'a', name: 'Passata', barcode: null }];
+  assert.equal(searchProducts(mixed, 'passata', () => 1).length, 1);
+  assert.equal(searchProducts(mixed, 'baresa', () => 1).length, 0);
+});
+
 test('ein eingetippter Barcode findet das Produkt', () => {
   assert.deepEqual(namesFor('4006381333931'), ['Barilla Fusilli 500 g']);
 });

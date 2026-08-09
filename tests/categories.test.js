@@ -186,6 +186,20 @@ test('eine unbekannte Kategorie fällt auf den Namen zurück', () => {
   assert.equal(categoryOf({ name: 'Milch 1 l', category: 'gibtsnicht' }), 'dairy');
 });
 
+test('die Marke fließt in die Zuordnung ein', () => {
+  // Bei "Miracel Whip" steckt der Hinweis in der Marke, nicht im Namen.
+  assert.equal(categoryOf({ brand: 'Miracel Whip', name: 'Balance 500 ml' }), 'sauce');
+  assert.equal(categoryOf({ brand: 'Baresa', name: 'Tomaten passiert' }), 'sauce');
+  assert.equal(categoryOf({ brand: 'Barilla', name: 'Fusilli 500 g' }), 'pasta');
+});
+
+test('eine gewählte Kategorie schlägt auch die Marke', () => {
+  assert.equal(
+    categoryOf({ brand: 'Miracel Whip', name: 'Balance', category: 'household' }),
+    'household',
+  );
+});
+
 test('categoryById liefert immer ein Fach', () => {
   assert.equal(categoryById('pasta').label, 'Nudeln & Reis');
   assert.equal(categoryById('gibtsnicht').id, FALLBACK_CATEGORY);

@@ -316,7 +316,9 @@ export function guessCategory(name) {
  */
 export function categoryOf(product) {
   if (product?.category && BY_ID.has(product.category)) return product.category;
-  return guessCategory(product?.name ?? '');
+  // Die Marke gehört mit in die Betrachtung: Bei "Miracel Whip" steckt der
+  // entscheidende Hinweis genau dort und nicht in der Bezeichnung.
+  return guessCategory([product?.brand, product?.name].filter(Boolean).join(' '));
 }
 
 /**

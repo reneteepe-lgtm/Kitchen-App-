@@ -8,7 +8,7 @@
 
 import { Store, LocalStorageAdapter } from './storage.js';
 import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.js';
-import { BarcodeScanner, isScanSupported, lookupBarcode, suggestName } from './barcode.js';
+import { BarcodeScanner, isScanSupported, lookupBarcode, suggestProduct } from './barcode.js';
 import { stockAnswer } from './search.js';
 import {
   CATEGORIES,
@@ -33,7 +33,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.7.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -65,6 +65,19 @@ function render() {
   if (detailProductId) renderDetail(detailProductId);
 }
 
+/**
+ * Setzt Marke und Bezeichnung untereinander in eine Zeile.
+ *
+ * Die Marke steht klein darüber, weil sie beim Suchen im Schrank hilft,
+ * aber nicht die Sache selbst benennt: "Baresa" über "Tomaten passiert".
+ * Fehlt sie -- bei allem, was nicht gescannt wurde --, bleibt die Zeile
+ * unverändert einzeilig.
+ */
+function labelInto(container, name, brand) {
+  if (brand) container.appendChild(el('span', 'item-brand', brand));
+  container.appendChild(el('span', 'item-name', name));
+}
+
 /** Eine Zeile mit Bestand, Prognose und den beiden Buchungsknöpfen. */
 function pantryRow(assessment) {
   const { product, stock } = assessment;
@@ -72,7 +85,7 @@ function pantryRow(assessment) {
   const row = el('li', 'item');
 
   const main = el('button', 'item-main');
-  main.appendChild(el('span', 'item-name', product.name));
+  labelInto(main, product.name, product.brand);
 
   const expiry = assessment.expiry;
   const parts = [forecast.text];
@@ -199,7 +212,7 @@ function manualRow({ wish, product, stock }) {
 
   // Antippen hakt ab -- die Geste, die man von einer Einkaufsliste erwartet.
   const main = el('button', 'item-main');
-  main.appendChild(el('span', 'item-name', wish.text));
+  labelInto(main, wish.text, product?.brand);
 
   const note = wish.done
     ? { text: 'erledigt', tone: 'empty' }
@@ -332,7 +345,7 @@ function renderShopping() {
   const suggestionRow = (item) => {
       const row = el('li', 'item');
       const main = el('button', 'item-main');
-      main.appendChild(el('span', 'item-name', item.product.name));
+      labelInto(main, item.product.name, item.product.brand);
 
       const tone = item.need.urgency === 3 ? 'empty' : item.need.urgency === 2 ? 'urgent' : 'soon';
       main.appendChild(el('span', `item-note tone-${tone}`, shoppingReason(item)));
@@ -389,7 +402,7 @@ function renderExpiry() {
     ...items.map(({ lot, product, days }) => {
       const row = el('li', 'item');
       const main = el('button', 'item-main');
-      main.appendChild(el('span', 'item-name', product.name));
+      labelInto(main, product.name, product.brand);
       main.appendChild(
         el(
           'span',
@@ -463,6 +476,7 @@ function renderDetail(productId) {
 
   const category = categoryById(categoryOf(product));
   const head = el('div', 'detail-head');
+  if (product.brand) head.appendChild(el('p', 'detail-brand', product.brand));
   head.appendChild(el('h2', null, product.name));
   head.appendChild(
     el(
@@ -618,7 +632,9 @@ function syncCategoryHint() {
     hint.textContent = 'Fest gewählt.';
     return;
   }
-  const guess = categoryById(guessCategory($('#product-name').value));
+  const guess = categoryById(
+    guessCategory(`${$('#product-brand').value} ${$('#product-name').value}`),
+  );
   hint.textContent = `Nach dem Namen: ${guess.icon} ${guess.label}`;
 }
 
@@ -628,6 +644,7 @@ function openProductDialog(product = null, prefill = {}) {
   $('#product-title').textContent = product ? 'Produkt bearbeiten' : 'Produkt anlegen';
   $('#product-name').value = product?.name ?? prefill.name ?? '';
   $('#product-min').value = String(product?.minStock ?? 1);
+  $('#product-brand').value = product?.brand ?? prefill.brand ?? '';
   $('#product-barcode').value = product?.barcode ?? prefill.barcode ?? '';
   // Fehlt das Feld (Daten aus einer älteren Fassung), gilt "vorschlagen".
   $('#product-suggest').checked = product ? product.suggest !== false : true;
@@ -802,7 +819,8 @@ async function handleScan(barcode, hint) {
   const hit = await lookupBarcode(barcode);
   stopScan();
 
-  openProductDialog(null, { name: suggestName(hit), barcode });
+  const suggestion = suggestProduct(hit);
+  openProductDialog(null, { name: suggestion.name, brand: suggestion.brand, barcode });
   if (!hit) toast('Produkt nicht in der Datenbank — bitte Namen eintragen');
 }
 
@@ -893,6 +911,7 @@ function wire() {
   fillCategorySelect();
   $('#product-category').addEventListener('change', syncCategoryHint);
   $('#product-name').addEventListener('input', syncCategoryHint);
+  $('#product-brand').addEventListener('input', syncCategoryHint);
 
   $('#btn-add').addEventListener('click', () => openProductDialog());
   $('#btn-scan').hidden = !isScanSupported();
@@ -917,16 +936,17 @@ function wire() {
       e.preventDefault();
       return;
     }
+    const brand = $('#product-brand').value.trim();
     const minStock = Number($('#product-min').value) || 0;
     const barcode = $('#product-barcode').value.trim() || null;
     const suggest = $('#product-suggest').checked;
     const category = $('#product-category').value || null;
 
     if (editingProduct) {
-      await pantry.updateProduct(editingProduct, { name, minStock, barcode, suggest, category });
+      await pantry.updateProduct(editingProduct, { name, brand, minStock, barcode, suggest, category });
       toast(`${name} gespeichert`);
     } else {
-      const product = await pantry.createProduct({ name, minStock, barcode, suggest, category });
+      const product = await pantry.createProduct({ name, brand, minStock, barcode, suggest, category });
       const initial = Number($('#product-stock').value) || 0;
       if (initial > 0) await pantry.addStock(product.id, initial, $('#product-bb').value || null);
       if (productWishId) await pantry.removeWish(productWishId);

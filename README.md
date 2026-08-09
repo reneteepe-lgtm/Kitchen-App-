@@ -23,8 +23,9 @@ lässt sie sich zum Startbildschirm hinzufügen und verhält sich dann wie eine 
   Packungen im Schrank, darf jede ihr eigenes Datum haben; die App warnt
   rechtzeitig und verbraucht immer zuerst, was zuerst abläuft.
 - **Barcode scannen** — Produkte per Kamera erfassen, auf Android wie auf
-  iPhone. Namen kommen aus der offenen Produktdatenbank
-  [Open Food Facts](https://world.openfoodfacts.org/).
+  iPhone. Name und Marke kommen aus der offenen Produktdatenbank
+  [Open Food Facts](https://world.openfoodfacts.org/); die Marke steht klein
+  über der Bezeichnung.
 - **Rückgängig** — eine versehentliche Buchung ist ein Fingertipp weit weg.
 
 ## Loslegen
@@ -185,6 +186,34 @@ stehen als für die Ware selbst — etwa Miracel Whip und Thomy bei den Saucen.
 Passt etwas nicht, sind zwei Wege möglich: die Kategorie am Produkt fest
 wählen, oder in `js/categories.js` einen Stamm ergänzen. Letzteres wirkt
 für alle Produkte auf einmal.
+
+## Marke und Bezeichnung
+
+Wird ein Produkt gescannt, übernimmt die App Marke und Bezeichnung
+**getrennt** und stellt sie übereinander:
+
+```
+BARESA
+Tomaten passiert 500 g
+```
+
+Das hält die Zeile lesbar: Die Marke hilft beim Wiedererkennen im Regal,
+benennt aber nicht die Sache selbst und würde den Namen in der schmalen
+Zeile sonst verdrängen. Ohne Marke — bei allem, was von Hand angelegt wurde
+— bleibt die Zeile unverändert.
+
+Drei Dinge hängen mit daran:
+
+- **Die Mengenangabe gehört zur Bezeichnung.** „Passata 500 g" und
+  „Passata 700 g" sind im Vorrat zwei verschiedene Dinge; der Name bricht
+  deshalb notfalls auf zwei Zeilen um, statt abgeschnitten zu werden.
+- **Die Marke ist suchbar.** „baresa" findet die Passata. Ein gleich guter
+  Treffer in der Bezeichnung steht aber vorn — wer „Passata" tippt, meint
+  das Produkt und nicht die Firma, die zufällig so heißt.
+- **Die Marke fließt in die Kategorie ein.** Bei „Miracel Whip" steckt der
+  entscheidende Hinweis genau dort und nicht in der Bezeichnung.
+
+Nachtragen oder ändern lässt sich die Marke jederzeit im Produktdialog.
 
 ## Nachschlagen und Einkaufsliste
 

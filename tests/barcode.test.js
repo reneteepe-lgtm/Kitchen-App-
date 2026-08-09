@@ -2,18 +2,47 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { suggestName, isNativeScanSupported, ZBAR_TYPES } from '../js/barcode.js';
+import { suggestProduct, isNativeScanSupported, ZBAR_TYPES } from '../js/barcode.js';
 
 const VENDOR = new URL('../vendor/zbar-wasm/zbar-wasm.mjs', import.meta.url);
 
-test('Produktnamen aus der Datenbank werden lesbar zusammengesetzt', () => {
-  assert.equal(
-    suggestName({ brand: 'Barilla', name: 'Fusilli', quantity: '500 g' }),
-    'Barilla Fusilli 500 g',
-  );
-  assert.equal(suggestName({ brand: '', name: 'Passata', quantity: '' }), 'Passata');
-  assert.equal(suggestName({ brand: 'Ja!', name: '', quantity: '1 l' }), 'Ja! 1 l');
-  assert.equal(suggestName(null), '');
+test('Marke und Bezeichnung werden getrennt übernommen', () => {
+  assert.deepEqual(suggestProduct({ brand: 'Barilla', name: 'Fusilli', quantity: '500 g' }), {
+    brand: 'Barilla',
+    name: 'Fusilli 500 g',
+  });
+  assert.deepEqual(suggestProduct({ brand: 'Baresa', name: 'Tomaten passiert', quantity: '' }), {
+    brand: 'Baresa',
+    name: 'Tomaten passiert',
+  });
+});
+
+test('die Mengenangabe bleibt bei der Bezeichnung', () => {
+  // "Passata 400 g" und "Passata 700 g" sind im Vorrat zwei Dinge.
+  assert.equal(suggestProduct({ brand: 'Mutti', name: 'Passata', quantity: '700 g' }).name, 'Passata 700 g');
+});
+
+test('eine im Namen wiederholte Marke wird nicht doppelt gezeigt', () => {
+  assert.deepEqual(suggestProduct({ brand: 'Baresa', name: 'Baresa Passata', quantity: '400 g' }), {
+    brand: 'Baresa',
+    name: 'Passata 400 g',
+  });
+});
+
+test('ohne Bezeichnung tritt die Marke an ihre Stelle', () => {
+  // Besser der Markenname als eine leere Zeile.
+  assert.deepEqual(suggestProduct({ brand: 'Ja!', name: '', quantity: '' }), {
+    brand: '',
+    name: 'Ja!',
+  });
+});
+
+test('ohne Marke bleibt nur die Bezeichnung', () => {
+  assert.deepEqual(suggestProduct({ brand: '', name: 'Passata', quantity: '' }), {
+    brand: '',
+    name: 'Passata',
+  });
+  assert.deepEqual(suggestProduct(null), { brand: '', name: '' });
 });
 
 test('ohne BarcodeDetector im Browser meldet die App keine native Erkennung', () => {

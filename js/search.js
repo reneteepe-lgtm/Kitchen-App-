@@ -59,6 +59,12 @@ export function editDistance(a, b, max = Infinity) {
   return previous[b.length];
 }
 
+/**
+ * Abschlag für Treffer in der Marke statt in der Bezeichnung. Gerade so
+ * viel, dass ein gleich guter Namenstreffer vorne steht.
+ */
+const BRAND_WEIGHT = 0.9;
+
 /** Wie viele Zeichen dürfen bei dieser Suchlänge danebenliegen? */
 function tolerance(query) {
   if (query.length < 4) return 0;
@@ -112,8 +118,19 @@ export function searchProducts(products, query, stockOf) {
 
   const matches = [];
   for (const product of products) {
-    // Ein eingetippter Barcode zählt als voller Treffer.
-    let score = product.barcode && product.barcode === query.trim() ? 1 : scoreMatch(query, product.name);
+    let score;
+    if (product.barcode && product.barcode === query.trim()) {
+      // Ein eingetippter Barcode zählt als voller Treffer.
+      score = 1;
+    } else {
+      // Auch die Marke ist suchbar -- "baresa" soll die Passata finden.
+      // Sie zählt aber etwas weniger: Wer "Passata" eingibt, meint das
+      // Produkt und nicht die Firma, die zufällig so heißt.
+      const byName = scoreMatch(query, product.name);
+      const brandHit = product.brand ? scoreMatch(query, product.brand) : null;
+      const byBrand = brandHit === null ? null : brandHit * BRAND_WEIGHT;
+      score = byName === null ? byBrand : byBrand === null ? byName : Math.max(byName, byBrand);
+    }
     if (score === null) continue;
     matches.push({ product, stock: stockOf(product), score });
   }

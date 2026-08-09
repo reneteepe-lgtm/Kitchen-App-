@@ -141,10 +141,20 @@ export class Pantry {
     return searchProducts(this.products(), query, (product) => stockOf(lots, product.id));
   }
 
-  async createProduct({ name, barcode = null, minStock = 1, note = '', suggest = true, category = null }) {
+  async createProduct({
+    name,
+    brand = '',
+    barcode = null,
+    minStock = 1,
+    note = '',
+    suggest = true,
+    category = null,
+  }) {
     const product = {
       id: newId('p'),
       name: name.trim(),
+      // Getrennt vom Namen, damit sie in der Liste klein darüber stehen kann.
+      brand: String(brand ?? '').trim(),
       barcode: barcode || null,
       minStock: Number(minStock) || 0,
       note,

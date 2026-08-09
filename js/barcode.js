@@ -218,8 +218,31 @@ export async function lookupBarcode(barcode, { signal, timeoutMs = 6000 } = {}) 
   }
 }
 
-/** Baut aus einem Treffer einen brauchbaren Produktnamen. */
-export function suggestName(hit) {
-  if (!hit) return '';
-  return [hit.brand, hit.name, hit.quantity].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+/**
+ * Zerlegt einen Treffer in Marke und Bezeichnung.
+ *
+ * Beides getrennt zu halten lohnt sich in der Anzeige: Die Marke steht
+ * klein über dem Namen ("Baresa" / "Tomaten passiert"), statt ihn in der
+ * schmalen Zeile zu verdrängen. Die Mengenangabe gehört zur Bezeichnung --
+ * "Passata 400 g" und "Passata 700 g" sind im Vorrat zwei verschiedene
+ * Dinge.
+ *
+ * @returns {{name:string, brand:string}}
+ */
+export function suggestProduct(hit) {
+  if (!hit) return { name: '', brand: '' };
+
+  const clean = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
+  const brand = clean(hit.brand);
+  let name = clean([hit.name, hit.quantity].filter(Boolean).join(' '));
+
+  // Manche Einträge wiederholen die Marke im Produktnamen ("Baresa Baresa
+  // Passata"). Einmal reicht, und zwar oben.
+  if (brand && name.toLowerCase().startsWith(brand.toLowerCase())) {
+    name = clean(name.slice(brand.length));
+  }
+
+  // Ohne Bezeichnung ist die Marke besser als gar nichts.
+  if (!name) return { name: brand, brand: '' };
+  return { name, brand };
 }
