@@ -84,6 +84,38 @@ dazu die Stellen, an denen ein Fehler still bliebe: die Formatnamen der
 Barcode-Bibliothek, die Dateiliste des Service Workers und der Gleichlauf
 der beiden Versionsangaben.
 
+## Sicherung
+
+Der Vorrat liegt allein auf dem jeweiligen Gerät. Das ist Absicht — niemand
+muss ein Konto anlegen, und niemand sonst sieht, was in eurer Küche steht.
+Die Kehrseite: Geht das Handy verloren oder räumt der Browser auf, ist die
+ganze Arbeit fort. Drei Dinge halten dagegen:
+
+**Die App bittet den Browser, die Daten zu behalten**
+(`navigator.storage.persist()`). Ohne diese Bitte gelten sie als bei
+Gelegenheit entbehrlich; Safari verwirft Daten von Seiten, die länger nicht
+besucht wurden, ohnehin von sich aus. Die Bitte kostet nichts und wird still
+gewährt oder abgelehnt — je nach Browser danach, ob die App auf dem
+Startbildschirm liegt. Was dabei herauskam, steht unter **Mehr → Daten**.
+
+**Unter „Daten" steht, wann zuletzt gesichert wurde**, wie viele Produkte und
+Buchungen gespeichert sind und wie viel Platz das belegt. Bei etwa fünf
+Megabyte ist `localStorage` zu Ende — so lässt sich am Gerät ablesen, ob das
+je ein Thema wird.
+
+**Ist es lange her, erinnert die App** — aber über der Vorratsliste, nicht
+unter „Mehr", denn dort sähe die Erinnerung niemand. Sie hält sich an drei
+Regeln: Sie kommt erst ab fünf erfassten Produkten (vorher wäre der Verlust
+in fünf Minuten aufgeholt), nach vierzehn Tagen ohne Sicherung, und wer sie
+wegwischt, hat eine Woche Ruhe. Unter „Daten" bleibt der Zustand derweil
+sichtbar — vertagt ist nicht erledigt.
+
+Gesichert wird über das Teilen-Menü, wo es das gibt. Auf dem iPhone führt der
+übliche Weg — ein Link mit `download` — in einer vom Startbildschirm
+gestarteten App oft ins Leere: Die Datei landet bestenfalls kommentarlos
+irgendwo. Über das Teilen-Menü landet sie dort, wo man sie hinlegt, und man
+sieht, dass etwas passiert ist.
+
 ## Zu zweit nutzen
 
 Die Daten liegen zunächst auf dem jeweiligen Gerät. Für den Abgleich gibt es
@@ -446,6 +478,7 @@ js/storage.js       Persistenz, austauschbar für späteren Sync
 js/barcode.js       Kamera-Scan und Produktdatenbank
 js/search.js        Nachsichtige Suche und die Antwort "haben wir das?"
 js/categories.js    Fächer und die automatische Zuordnung nach Namen
+js/backup.js        Wann an eine Sicherung erinnert wird
 js/format.js        Aufbereitung der Zahlen für die Anzeige
 js/app.js           Verdrahtung von Daten und Oberfläche
 vendor/zbar-wasm/   Barcode-Erkennung für iOS (LGPL, siehe Ordner-README)

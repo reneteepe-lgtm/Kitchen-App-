@@ -723,6 +723,44 @@ main {
   background: #000;
 }
 
+/* --- Hinweis über der Liste --------------------------------------------- */
+
+/*
+ * Deutlich genug, dass man es liest, ruhig genug, dass es nicht jeden Tag
+ * stört: Der Rahmen trägt die Farbe, die Fläche bleibt hell. Ein voll
+ * eingefärbter Kasten hätte über der Liste geschrien.
+ */
+.notice {
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px solid var(--soon);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.notice-text {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.notice-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.notice-actions .button {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Die Zeile unter "Daten", wenn die Sicherung fehlt oder alt ist. */
+.is-warn {
+  color: var(--soon);
+}
+
 /* --- Scanner ------------------------------------------------------------ */
 
 .scanner {

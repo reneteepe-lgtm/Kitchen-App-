@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
@@ -41,15 +41,19 @@ test('die Versionsnummer hat die Form x.y.z', async () => {
  */
 test('der Service Worker kennt alle Programmdateien', async () => {
   const sw = await read('../sw.js');
+
+  // Nicht abgeschrieben, sondern nachgesehen: Eine von Hand gepflegte Liste
+  // im Test wäre genauso vergesslich wie die in sw.js -- ein neues Modul
+  // fiele in beiden zugleich durch.
+  const module = (await readdir(new URL('../js/', import.meta.url)))
+    .filter((name) => name.endsWith('.js'))
+    .map((name) => `./js/${name}`);
+
   const dateien = [
     './index.html',
     './app.css',
-    './js/app.js',
-    './js/model.js',
-    './js/storage.js',
-    './js/forecast.js',
-    './js/barcode.js',
-    './js/format.js',
+    './manifest.webmanifest',
+    ...module,
     './vendor/zbar-wasm/zbar-wasm.mjs',
     './vendor/zbar-wasm/zbar.wasm',
   ];

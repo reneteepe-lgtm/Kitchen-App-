@@ -54,6 +54,20 @@
           />
         </div>
         <div id="search-answer" class="answer" hidden role="status" aria-live="polite"></div>
+
+        <!--
+          Steht nur hier, wenn wirklich etwas zu verlieren ist und lange nicht
+          gesichert wurde. Unter "Mehr" hätte diese Erinnerung niemand gesehen
+          - und dann schützte sie nichts.
+        -->
+        <div id="backup-reminder" class="notice" hidden>
+          <p id="backup-reminder-text" class="notice-text"></p>
+          <div class="notice-actions">
+            <button id="backup-now" class="button button-primary">Jetzt sichern</button>
+            <button id="backup-later" class="button button-ghost">Später</button>
+          </div>
+        </div>
+
         <ul id="pantry-list" class="list"></ul>
         <p id="pantry-empty" class="empty-state" hidden>
           Noch nichts erfasst.<br />
@@ -119,15 +133,18 @@
         <div class="card">
           <h2>Daten</h2>
           <p class="field-hint">
-            Alles liegt auf diesem Gerät. Für das zweite Handy exportierst du hier eine
-            Sicherung und liest sie dort ein.
+            Alles liegt auf diesem Gerät. <strong>Sichern</strong> legt eine Datei ab — in
+            „Dateien“, in der Wolke oder an euch selbst geschickt. Dieselbe Datei bringt den
+            Stand auf das zweite Handy: dort <strong>Einlesen</strong>.
           </p>
           <div class="button-row">
-            <button id="btn-export" class="button">Exportieren</button>
+            <button id="btn-export" class="button">Sichern</button>
             <button id="btn-import" class="button">Einlesen</button>
           </div>
           <input id="import-file" type="file" accept="application/json" hidden />
+          <p id="backup-state" class="field-hint backup-state"></p>
           <p id="data-stats" class="field-hint data-stats"></p>
+          <p id="storage-state" class="field-hint"></p>
         </div>
 
         <div class="card" id="backfill-card" hidden>

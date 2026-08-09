@@ -6,7 +6,8 @@
  * Anzeige nicht vom gespeicherten Bestand abweichen.
  */
 
-import { Store, LocalStorageAdapter } from './storage.js';
+import { Store, LocalStorageAdapter, requestPersistence } from './storage.js';
+import { backupStatus, describeBackupAge, formatBytes, snoozeUntil } from './backup.js';
 import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.js';
 import { BarcodeScanner, isScanSupported, lookupBarcode, stripBrand, suggestProduct } from './barcode.js';
 import { stockAnswer } from './search.js';
@@ -33,7 +34,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.11.0';
+export const APP_VERSION = '1.12.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -59,6 +60,7 @@ function render() {
   renderExpiry();
   renderBadges();
   renderStats();
+  renderBackup();
   renderBackfill();
   // Die Detailansicht ist ein eigener Dialog, der über der Liste liegt.
   // Ohne diesen Aufruf zeigte sie nach einer Änderung weiter den Stand von
@@ -485,8 +487,52 @@ function renderStats() {
   const products = pantry.products().length;
   const events = pantry.events().length;
   $('#data-stats').textContent = products
-    ? `${plural(products, 'Produkt', 'Produkte')}, ${plural(events, 'Buchung', 'Buchungen')} gespeichert.`
+    ? `${plural(products, 'Produkt', 'Produkte')}, ${plural(events, 'Buchung', 'Buchungen')}` +
+      ` — ${formatBytes(store.usedBytes())}.`
     : 'Noch nichts gespeichert.';
+}
+
+/**
+ * Der Zustand der Sicherung -- einmal ausführlich unter "Daten", einmal als
+ * Erinnerung dort, wo man tatsächlich hinsieht.
+ */
+function renderBackup() {
+  const status = backupStatus({
+    lastBackupAt: store.getSetting('lastBackupAt', null),
+    remindAfterAt: store.getSetting('backupRemindAfter', null),
+    productCount: pantry.products().length,
+  });
+
+  const line = $('#backup-state');
+  line.textContent = `Zuletzt gesichert: ${describeBackupAge(status.days)}.`;
+  line.classList.toggle('is-warn', status.state !== 'frisch' && status.state !== 'nichts');
+
+  const reminder = $('#backup-reminder');
+  reminder.hidden = !status.remind;
+  if (status.remind) {
+    $('#backup-reminder-text').textContent =
+      status.state === 'nie'
+        ? 'Dein Vorrat liegt nur auf diesem Handy und ist noch nie gesichert worden. Geht das Gerät verloren, ist die Arbeit weg.'
+        : `Zuletzt gesichert ${describeBackupAge(status.days)}. Der Vorrat liegt nur auf diesem Handy.`;
+  }
+}
+
+/**
+ * Was der Browser über die Haltbarkeit dieser Daten sagt.
+ *
+ * Steht bewusst dabei: "auf Widerruf" ist keine Panikmeldung, sondern der
+ * Grund, warum die Sicherung wichtig ist -- und in dem Fall hilft es zu
+ * wissen, dass die App auf dem Startbildschirm besser dasteht als im Browser.
+ */
+function renderStorageState(mode) {
+  // Bewusst in der ruhigen Schrift: Das ist eine Auskunft, keine Aufgabe.
+  // Die Warnfarbe bleibt der Zeile vorbehalten, zu der es einen Knopf gibt.
+  $('#storage-state').textContent =
+    mode === 'dauerhaft'
+      ? 'Der Browser hat zugesagt, diese Daten zu behalten.'
+      : mode === 'auf-widerruf'
+        ? 'Der Browser behält die Daten nur auf Widerruf. Liegt die App auf dem Startbildschirm, ist die Zusage meist verbindlich.'
+        : 'Dieser Browser sagt nichts darüber, wie lange er die Daten behält.';
 }
 
 // --- Detailansicht --------------------------------------------------------
@@ -955,15 +1001,50 @@ async function backfillBrands() {
 
 // --- Datensicherung -------------------------------------------------------
 
-function exportBackup() {
-  const blob = new Blob([store.export()], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+/**
+ * Legt eine Sicherung ab.
+ *
+ * Auf dem iPhone führt der übliche Weg -- ein Link mit `download` -- in einer
+ * vom Startbildschirm gestarteten App oft ins Leere: Die Datei landet
+ * bestenfalls kommentarlos irgendwo, schlimmstenfalls passiert gar nichts.
+ * Deshalb zuerst das Teilen-Menü, das dort zu Hause ist: Ablage in "Dateien",
+ * an sich selbst schicken, in die Wolke legen -- die Wahl bleibt beim Nutzer,
+ * und man sieht, dass etwas passiert ist.
+ *
+ * @returns {Promise<boolean>} ob die Sicherung wirklich abgelegt wurde
+ */
+async function exportBackup() {
+  const json = store.export();
+  const name = `kuechenvorrat-${new Date().toISOString().slice(0, 10)}.json`;
+
+  const file = typeof File === 'function' ? new File([json], name, { type: 'application/json' }) : null;
+  if (file && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Küchenvorrat — Sicherung' });
+      return true;
+    } catch (err) {
+      // Abgebrochen ist kein Fehler, aber auch keine Sicherung.
+      if (err?.name === 'AbortError') return false;
+      // Alles andere: unten den gewöhnlichen Weg versuchen.
+    }
+  }
+
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `kuechenvorrat-${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = name;
   link.click();
   URL.revokeObjectURL(url);
-  toast('Sicherung gespeichert');
+  return true;
+}
+
+/** Sichern und das Ergebnis vermerken -- daran hängt die Erinnerung. */
+async function runBackup() {
+  const done = await exportBackup();
+  if (!done) return;
+  await store.setSetting('lastBackupAt', new Date().toISOString());
+  await store.setSetting('backupRemindAfter', null);
+  toast('Sicherung abgelegt');
 }
 
 async function importBackup(file) {
@@ -1135,7 +1216,13 @@ function wire() {
 
   $('#btn-reset-forecasts').addEventListener('click', resetAllForecasts);
   $('#btn-backfill').addEventListener('click', backfillBrands);
-  $('#btn-export').addEventListener('click', exportBackup);
+  $('#btn-export').addEventListener('click', runBackup);
+  $('#backup-now').addEventListener('click', runBackup);
+  $('#backup-later').addEventListener('click', async () => {
+    // Nicht abschalten, nur vertagen: Der Grund für die Erinnerung besteht
+    // ja weiter.
+    await store.setSetting('backupRemindAfter', snoozeUntil());
+  });
   $('#btn-import').addEventListener('click', () => $('#import-file').click());
   $('#import-file').addEventListener('change', async (e) => {
     const [file] = e.target.files;
@@ -1157,6 +1244,10 @@ async function main() {
   wire();
   switchView(activeView);
   render();
+
+  // Gleich beim Start, aber ohne den ersten Aufbau aufzuhalten: Der Browser
+  // entscheidet still, und die Antwort steht danach unter "Mehr".
+  requestPersistence().then(renderStorageState);
 
   setupServiceWorker();
 }

@@ -19,6 +19,34 @@
 
 export const COLLECTIONS = ['products', 'lots', 'events', 'wishes'];
 
+/**
+ * Bittet den Browser, diese Daten dauerhaft zu behalten.
+ *
+ * Ohne diese Bitte gelten die Daten als "bei Gelegenheit entbehrlich": Wird
+ * der Speicher knapp, räumt der Browser sie weg, und der ganze mühsam
+ * erfasste Vorrat ist fort. Safari verwirft Daten von Seiten, die länger
+ * nicht besucht wurden, ohnehin von sich aus.
+ *
+ * Die Bitte kostet nichts und wird stillschweigend gewährt oder abgelehnt --
+ * je nach Browser danach, ob die App auf dem Startbildschirm liegt oder
+ * regelmäßig benutzt wird. Fragen tut sie in keinem Fall.
+ *
+ * @returns {Promise<'dauerhaft'|'auf-widerruf'|'unbekannt'>}
+ */
+export async function requestPersistence(storage = globalThis.navigator?.storage) {
+  if (typeof storage?.persist !== 'function') return 'unbekannt';
+  try {
+    // Schon gewährt? Dann nicht erneut fragen -- manche Browser zählen jede
+    // Anfrage gegen die App.
+    if (typeof storage.persisted === 'function' && (await storage.persisted())) {
+      return 'dauerhaft';
+    }
+    return (await storage.persist()) ? 'dauerhaft' : 'auf-widerruf';
+  } catch {
+    return 'unbekannt';
+  }
+}
+
 const emptyState = () => ({
   products: {},
   lots: {},
@@ -151,6 +179,19 @@ export class Store {
 
   export() {
     return JSON.stringify({ ...this.state, exportedAt: new Date().toISOString() }, null, 2);
+  }
+
+  /**
+   * Wie viel Platz die Daten belegen, in Bytes.
+   *
+   * Gemessen an derselben Zeichenkette, die auch geschrieben wird. Der Wert
+   * ist kein Selbstzweck: localStorage ist bei etwa fünf Megabyte zu Ende,
+   * und Buchungen sammeln sich mit den Jahren an. So lässt sich am Gerät
+   * ablesen, ob das je ein Thema wird.
+   */
+  usedBytes() {
+    const json = JSON.stringify(this.state);
+    return typeof TextEncoder === 'function' ? new TextEncoder().encode(json).length : json.length;
   }
 
   /**
