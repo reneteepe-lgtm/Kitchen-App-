@@ -13,6 +13,7 @@ import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.j
 import { BarcodeScanner, isScanSupported, lookupBarcode, stripBrand, suggestProduct } from './barcode.js';
 import { normalize, stockAnswer } from './search.js';
 import { parseReceipt, suggestedName } from './receipt.js';
+import { brandsInUse, splitBrand } from './brands.js';
 import {
   CATEGORIES,
   categoriesInShoppingOrder,
@@ -36,7 +37,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.15.0';
+export const APP_VERSION = '1.16.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -64,6 +65,7 @@ function render() {
   renderStats();
   renderBackup();
   renderBackfill();
+  renderBrandSplit();
   renderLastImport();
   syncAppBadge();
   // Die Detailansicht ist ein eigener Dialog, der über der Liste liegt.
@@ -985,6 +987,48 @@ function backfillCandidates() {
   return pantry.products().filter((product) => product.barcode && !product.brand);
 }
 
+/**
+ * Produkte, bei denen die Marke noch im Namen steckt.
+ *
+ * Betrifft alles, was vor dieser Fassung über einen Bon hereinkam: Dort gab
+ * es kein eigenes Markenfeld, und "Gut&Günstig Frischkäse Natur" stand als
+ * ein Stück im Namen.
+ */
+function brandSplitCandidates() {
+  const known = brandsInUse(pantry.products());
+  return pantry
+    .products()
+    .filter((product) => !String(product.brand ?? '').trim())
+    .map((product) => ({ product, ...splitBrand(product.name, known) }))
+    .filter((entry) => entry.brand);
+}
+
+function renderBrandSplit() {
+  const candidates = brandSplitCandidates();
+  $('#split-card').hidden = candidates.length === 0;
+  if (!candidates.length) return;
+
+  // Zwei Beispiele dazu: So sieht man, was gleich passiert, statt es zu ahnen.
+  const beispiele = candidates
+    .slice(0, 2)
+    .map((entry) => `„${entry.brand}“ + „${entry.name}“`)
+    .join(', ');
+  $('#split-info').textContent =
+    `Bei ${plural(candidates.length, 'Produkt', 'Produkten')} steckt die Marke noch im Namen — etwa ${beispiele}.`;
+}
+
+async function splitBrands() {
+  const candidates = brandSplitCandidates();
+  if (!candidates.length) return;
+
+  const writes = candidates.map(({ product, brand, name }) => [
+    'products',
+    { ...product, brand, name },
+  ]);
+  await store.putMany(writes);
+  toast(`Bei ${plural(candidates.length, 'Produkt', 'Produkten')} die Marke abgetrennt`);
+}
+
 function renderBackfill() {
   const candidates = backfillCandidates();
   $('#backfill-card').hidden = candidates.length === 0;
@@ -1076,9 +1120,14 @@ function receiptRow(entry, index) {
     updateReceiptButton();
   });
 
+  // Genau so, wie es nachher im Vorrat steht -- mit der Marke klein darüber.
+  // Wer hier etwas Falsches sieht, kann es vor dem Buchen noch abwählen.
   const label = el('div', 'receipt-name');
-  label.append(suggestedName(entry.item));
-  if (entry.item.qty > 1) label.appendChild(el('span', 'receipt-qty', ` ×${entry.item.qty}`));
+  const geteilt = splitBrand(suggestedName(entry.item), brandsInUse(pantry.products()));
+  labelInto(label, geteilt.name, geteilt.brand);
+  if (entry.item.qty > 1) {
+    label.lastChild.appendChild(el('span', 'receipt-qty', ` ×${entry.item.qty}`));
+  }
 
   // Wohin gebucht wird. Eine Auswahlliste statt einer Suche: Sie öffnet auf
   // dem Handy die Systemauswahl, und die ist mit einer Hand bedienbar.
@@ -1192,7 +1241,10 @@ async function bookReceipt() {
     if (!entry.take) continue;
     let productId = entry.productId;
     if (!productId) {
-      const product = await pantry.createProduct({ name: suggestedName(entry.item) });
+      // Die Marke steht auf dem Bon vorn im Namen. Getrennt gehalten, steht
+      // sie im Vorrat klein darüber -- wie bei allem Gescannten auch.
+      const { brand, name } = splitBrand(suggestedName(entry.item), brandsInUse(pantry.products()));
+      const product = await pantry.createProduct({ name, brand });
       productId = product.id;
       spur.products.push(product.id);
       angelegt++;
@@ -1539,6 +1591,7 @@ function wire() {
 
   $('#btn-reset-forecasts').addEventListener('click', resetAllForecasts);
   $('#btn-backfill').addEventListener('click', backfillBrands);
+  $('#btn-split').addEventListener('click', splitBrands);
   $('#btn-export').addEventListener('click', runBackup);
   $('#backup-now').addEventListener('click', runBackup);
   $('#backup-later').addEventListener('click', async () => {

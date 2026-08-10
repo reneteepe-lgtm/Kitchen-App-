@@ -125,6 +125,36 @@ Die Größe wandert in den Namen: `Broccoli 500 g`. Denn „Frischkäse 300 g" u
 „Frischkäse 150 g" sind zwei verschiedene Dinge im Schrank. Nur „1 Stück"
 bleibt weg — das sagt nichts über die Packung.
 
+### Die Marke aus dem Namen lösen
+
+Beim Scannen liefert die Produktdatenbank die Marke getrennt mit. Auf einem
+Bon steht sie einfach vorn im Namen: `Gut&Günstig Frischkäse Natur`. Damit
+sie auch dort klein über der Bezeichnung stehen kann, muss sie abgetrennt
+werden — und dabei ist Raten gefährlich: Aus „Zwiebeln rot" dürfte niemals
+die Marke „Zwiebeln" und das Produkt „rot" werden.
+
+Abgetrennt wird deshalb nur, was aus einer von zwei Quellen als Marke
+**bekannt** ist (`js/brands.js`):
+
+1. den Marken, die im eigenen Vorrat schon stehen — die stammen aus
+   gescannten Barcodes und sind damit belegt, nicht geraten;
+2. einer mitgelieferten Liste geläufiger Marken aus deutschen Supermärkten.
+
+Alles andere bleibt unangetastet. Ein Name mit Marke drin ist harmlos; ein
+falsch zerschnittener ist Unsinn im Vorrat. Die längste passende Marke
+gewinnt (sonst bliebe von „Dr. Oetker" nur „Dr."), getrennt wird nur an einer
+Wortgrenze („Arla" greift nicht in „Arlagurt"), und wenn hinterher nichts
+Sinnvolles übrig bliebe, wird gar nicht getrennt.
+
+Die Schnittstelle im Text lässt sich nicht über die Wortzahl finden:
+„Gut&Günstig" ist ein Wort, vereinheitlicht aber zwei. Stattdessen wird der
+Originaltext Zeichen für Zeichen verlängert, bis seine vereinheitlichte Form
+der Marke entspricht — so bleibt die Schreibweise des Bons erhalten.
+
+Für Produkte, die vor dieser Fassung über einen Bon hereinkamen, erscheint
+unter **Mehr** die Karte **„Marken abtrennen"**. Sie zeigt, wie viele es
+betrifft und zwei Beispiele, und verschwindet, sobald nichts mehr offen ist.
+
 ### Warum nichts ungefragt gebucht wird
 
 Picnic liefert **keine Barcodes** mit, nur Bezeichnungen. Die App muss also
@@ -587,6 +617,7 @@ js/categories.js    Fächer und die automatische Zuordnung nach Namen
 js/backup.js        Wann an eine Sicherung erinnert wird
 js/badge.js         Der Punkt auf dem App-Symbol
 js/receipt.js       Liest den Bon einer Picnic-Lieferung
+js/brands.js        Trennt bekannte Marken vom Produktnamen
 js/format.js        Aufbereitung der Zahlen für die Anzeige
 js/app.js           Verdrahtung von Daten und Oberfläche
 vendor/zbar-wasm/   Barcode-Erkennung für iOS (LGPL, siehe Ordner-README)
