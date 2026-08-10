@@ -206,7 +206,24 @@ export function assessProduct({ product, stock, events, now = new Date(), config
     need = { reason: 'empty', urgency: 3, text: 'leer' };
   } else if (stock <= minStock) {
     need = { reason: 'below-min', urgency: 2, text: `unter Mindestbestand (${minStock})` };
-  } else if (projection.daysLeft !== null && projection.daysLeft <= leadDays) {
+  } else if (
+    confidence.level !== 'learning' &&
+    projection.daysLeft !== null &&
+    projection.daysLeft <= leadDays
+  ) {
+    /*
+     * "Geht bald aus" nur, wenn die Schätzung etwas taugt.
+     *
+     * Solange zu wenig beobachtet wurde, kommt die Reichweite fast
+     * vollständig aus dem Vorwissen -- und das schlug hier zurück: Ein eben
+     * erst angelegtes Produkt hatte eine gerade so kurze Reichweite, dass es
+     * sich noch am Tag des Einkaufs selbst zum Nachkaufen vorschlug. Nach dem
+     * Einlesen eines Bons stand die halbe Lieferung sofort wieder auf der
+     * Einkaufsliste.
+     *
+     * Leer und unter Mindestbestand bleiben davon unberührt: Das sind
+     * abgezählte Tatsachen, keine Schätzungen.
+     */
     need = { reason: 'running-out', urgency: 1, text: 'geht bald aus' };
   }
 

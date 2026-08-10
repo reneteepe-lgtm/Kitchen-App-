@@ -199,3 +199,29 @@ test('daysUntil ignoriert die Uhrzeit', () => {
   assert.equal(daysUntil('2026-06-04', from), 3);
   assert.equal(daysUntil(null, from), null);
 });
+
+test('ohne Angabe steht der Mindestbestand auf null', async () => {
+  // Eins schlüge schon an, wenn noch genau eine Packung da ist -- bei einem
+  // frisch erfassten Vorrat also bei fast allem gleichzeitig.
+  const pantry = await freshPantry();
+  const product = await pantry.createProduct({ name: 'Zucchini' });
+  assert.equal(product.minStock, 0);
+});
+
+test('ein ausdrücklich gesetzter Mindestbestand bleibt', async () => {
+  const pantry = await freshPantry();
+  assert.equal((await pantry.createProduct({ name: 'Nudeln', minStock: 3 })).minStock, 3);
+});
+
+test('bei null wird erst der leere Vorrat vorgeschlagen', async () => {
+  // Der Fall, um den es geht: Von allem ist noch eine Packung da. Mit einem
+  // Mindestbestand von eins stand dann alles zugleich auf der Einkaufsliste.
+  const pantry = await freshPantry();
+  const product = await pantry.createProduct({ name: 'Passata 400 g' });
+
+  await pantry.addStock(product.id, 1);
+  assert.equal(pantry.shoppingList().length, 0, 'eine Packung reicht noch');
+
+  await pantry.consume(product.id, 1);
+  assert.equal(pantry.shoppingList().length, 1, 'leer kommt auf die Liste');
+});

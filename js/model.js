@@ -150,7 +150,10 @@ export class Pantry {
     name,
     brand = '',
     barcode = null,
-    minStock = 1,
+    // Null als Standard: Ein Mindestbestand von eins schlägt schon dann an,
+    // wenn noch genau eine Packung da ist -- bei einem frisch erfassten
+    // Vorrat also bei fast allem gleichzeitig.
+    minStock = 0,
     note = '',
     suggest = true,
     category = null,

@@ -318,6 +318,35 @@ Es genügt also, in `js/storage.js` einen weiteren Adapter neben
 `LocalStorageAdapter` zu stellen (`read`/`write` gegen eine Datenbank). An der
 übrigen Anwendungslogik ändert sich dafür nichts.
 
+## Wann etwas auf die Einkaufsliste kommt
+
+Drei Gründe, in dieser Reihenfolge:
+
+1. **Leer.** Nichts mehr da.
+2. **Unter Mindestbestand.** Der steht standardmäßig auf **0** — dann greift
+   diese Regel gar nicht, und es zählt nur, was wirklich aufgebraucht ist.
+   Wer bei den Nudeln immer zwei im Schrank haben will, trägt dort zwei ein.
+3. **Geht bald aus.** Aus dem geschätzten Verbrauch, mit dem eingestellten
+   Vorlauf.
+
+Der Mindestbestand stand bis Fassung 1.17 beim Anlegen auf eins. Das schlägt
+aber schon an, wenn noch genau **eine** Packung da ist — bei einem frisch
+erfassten Vorrat also bei fast allem gleichzeitig, und die Einkaufsliste war
+voll mit Dingen, von denen noch etwas da war. Beim ersten Start nach dem
+Update wird er deshalb einmalig auf null gezogen, aber **nur dort, wo er noch
+auf genau diesem alten Standardwert steht**: Eine absichtlich gesetzte
+Schwelle stillschweigend niederzureißen wäre schlimmer als ein Vorschlag zu
+viel.
+
+Punkt 3 greift außerdem erst, wenn die Schätzung etwas taugt. Solange zu
+wenig beobachtet wurde, kommt die Reichweite fast vollständig aus dem
+Vorwissen — und das schlug zurück: Ein eben erst eingebuchtes Produkt hatte
+eine so kurze geschätzte Reichweite, dass es sich noch am Tag des Einkaufs
+selbst zum Nachkaufen vorschlug. Nach dem Einlesen eines Bons stand die halbe
+Lieferung sofort wieder auf der Einkaufsliste. „Leer" und „unter
+Mindestbestand" bleiben davon unberührt: Das sind abgezählte Tatsachen, keine
+Schätzungen.
+
 ## Wie die Prognose funktioniert
 
 Der Verbrauch wird als Poisson-Prozess mit unbekannter Rate modelliert, die

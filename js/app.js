@@ -38,7 +38,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.17.0';
+export const APP_VERSION = '1.18.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -774,7 +774,7 @@ function openProductDialog(product = null, prefill = {}) {
   productWishId = prefill.wishId ?? null;
   $('#product-title').textContent = product ? 'Produkt bearbeiten' : 'Produkt anlegen';
   $('#product-name').value = product?.name ?? prefill.name ?? '';
-  $('#product-min').value = String(product?.minStock ?? 1);
+  $('#product-min').value = String(product?.minStock ?? 0);
   $('#product-brand').value = product?.brand ?? prefill.brand ?? '';
   $('#product-barcode').value = product?.barcode ?? prefill.barcode ?? '';
   // Fehlt das Feld (Daten aus einer älteren Fassung), gilt "vorschlagen".
@@ -1046,6 +1046,32 @@ async function splitBrands() {
   ]);
   await store.putMany(writes);
   toast(`Bei ${plural(candidates.length, 'Produkt', 'Produkten')} die Marke abgetrennt`);
+}
+
+/**
+ * Zieht den Mindestbestand einmalig auf null.
+ *
+ * Bis Fassung 1.17 stand er beim Anlegen auf eins. Das schlägt aber schon
+ * an, wenn noch genau eine Packung da ist -- bei einem frisch erfassten
+ * Vorrat also bei fast allem gleichzeitig, und die Einkaufsliste war voll
+ * mit Dingen, von denen noch etwas da war.
+ *
+ * Angefasst wird nur, was noch auf genau diesem alten Standardwert steht.
+ * Wer bei den Nudeln bewusst drei eingetragen hat, behält seine drei -- eine
+ * absichtlich gesetzte Schwelle stillschweigend niederzureißen wäre schlimmer
+ * als ein Vorschlag zu viel.
+ *
+ * @returns {Promise<number>} wie viele Produkte geändert wurden
+ */
+async function migrateMinStock() {
+  if (store.getSetting('minStockZeroed', false) === true) return 0;
+
+  const betroffen = pantry.products().filter((product) => Number(product.minStock) === 1);
+  if (betroffen.length) {
+    await store.putMany(betroffen.map((product) => ['products', { ...product, minStock: 0 }]));
+  }
+  await store.setSetting('minStockZeroed', true);
+  return betroffen.length;
 }
 
 // --- Doppelte zusammenführen ----------------------------------------------
@@ -1701,6 +1727,11 @@ function wire() {
 
 async function main() {
   await store.init();
+
+  // Vor dem ersten Zeichnen und vor dem Abonnement: So läuft die Umstellung
+  // genau einmal durch, ohne dass die Liste dabei zweimal aufgebaut wird.
+  const gesenkt = await migrateMinStock();
+
   store.subscribe(render);
 
   $('#app-version').textContent = APP_VERSION;
@@ -1714,6 +1745,12 @@ async function main() {
   wire();
   switchView(activeView);
   render();
+
+  // Nicht stillschweigend: Eine Änderung am eigenen Bestand soll man
+  // mitbekommen, auch wenn man sie selbst veranlasst hat.
+  if (gesenkt) {
+    toast(`Mindestbestand bei ${plural(gesenkt, 'Produkt', 'Produkten')} auf 0 gesetzt`);
+  }
 
   /*
    * Beim Zuklappen noch einmal nachrechnen.

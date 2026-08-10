@@ -295,8 +295,11 @@
         </label>
         <label class="field">
           <span>Mindestbestand</span>
-          <span class="field-hint">Ab diesem Bestand kommt es auf die Einkaufsliste.</span>
-          <input id="product-min" type="number" min="0" step="1" value="1" />
+          <span class="field-hint">
+            Ab diesem Bestand kommt es auf die Einkaufsliste. Bei 0 erst, wenn nichts mehr
+            da ist — oder wenn der geschätzte Verbrauch das nahelegt.
+          </span>
+          <input id="product-min" type="number" min="0" step="1" value="0" />
         </label>
         <label class="field">
           <span>Barcode</span>

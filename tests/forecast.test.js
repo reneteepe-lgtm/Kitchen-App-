@@ -178,3 +178,42 @@ test('Buchungen in der Zukunft verfälschen die Rate nicht', () => {
   const rate = estimateConsumptionRate({ events, observedSince: daysAgo(70), now: NOW });
   assert.ok(rate.ratePerDay < 0.3, `Ausreißer aus der Zukunft eingerechnet: ${rate.ratePerDay}`);
 });
+
+/**
+ * Solange zu wenig beobachtet wurde, kommt die Reichweite fast vollständig
+ * aus dem Vorwissen. Darauf einen Nachkauf zu stützen, hieße so zu tun, als
+ * wüsste die App schon Bescheid -- und schlug praktisch zurück: Ein eben
+ * eingebuchtes Produkt schlug sich noch am selben Tag selbst vor.
+ */
+test('was noch gelernt wird, kommt nicht als "geht bald aus" auf die Liste', () => {
+  const product = { id: 'p1', name: 'Passata', minStock: 0, createdAt: new Date().toISOString() };
+  const events = [{ productId: 'p1', type: 'purchase', qty: 1, ts: new Date().toISOString() }];
+
+  const assessment = assessProduct({ product, stock: 1, events });
+  assert.equal(assessment.confidence.level, 'learning');
+  assert.ok(assessment.projection.daysLeft <= 7, 'die Reichweite allein sähe knapp aus');
+  assert.equal(assessment.need, null, 'trotzdem kein Vorschlag');
+});
+
+test('leer und unter Mindestbestand gelten auch beim Lernen', () => {
+  // Das sind abgezählte Tatsachen, keine Schätzungen.
+  const product = { id: 'p1', name: 'Passata', minStock: 2, createdAt: new Date().toISOString() };
+  const events = [{ productId: 'p1', type: 'purchase', qty: 1, ts: new Date().toISOString() }];
+
+  assert.equal(assessProduct({ product, stock: 0, events }).need?.reason, 'empty');
+  assert.equal(assessProduct({ product, stock: 1, events }).need?.reason, 'below-min');
+});
+
+test('mit belastbarer Historie zählt die Reichweite wieder', () => {
+  const day = 24 * 60 * 60 * 1000;
+  const ago = (n) => new Date(Date.now() - n * day).toISOString();
+  const product = { id: 'p1', name: 'Nudeln', minStock: 0, createdAt: ago(120) };
+  // Regelmäßiger Verbrauch über Monate: Das ist keine Vermutung mehr.
+  // Alle drei Tage eine Packung -- die eine übrige reicht keine Woche mehr.
+  const events = [];
+  for (let i = 1; i <= 25; i++) events.push({ productId: 'p1', type: 'consume', qty: 1, ts: ago(i * 3) });
+
+  const assessment = assessProduct({ product, stock: 1, events });
+  assert.notEqual(assessment.confidence.level, 'learning');
+  assert.equal(assessment.need?.reason, 'running-out');
+});
