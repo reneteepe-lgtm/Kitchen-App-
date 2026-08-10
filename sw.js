@@ -19,7 +19,7 @@
  * dass der Browser diese Datei als geändert erkennt, den neuen Worker
  * installiert und der alte Cache verworfen wird.
  */
-const CACHE = 'kuechenvorrat-v1.14.0';
+const CACHE = 'kuechenvorrat-v1.15.0';
 
 const SHELL = [
   './',

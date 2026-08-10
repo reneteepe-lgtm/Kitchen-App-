@@ -749,6 +749,21 @@ main {
   resize: vertical;
 }
 
+/* Abgesetzt vom Einlesen darüber: Es geht in die andere Richtung. */
+.receipt-last {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.receipt-last .field-hint {
+  margin: 0 0 10px;
+}
+
+.receipt-last .button {
+  width: 100%;
+}
+
 .receipt-list {
   max-height: 55vh;
   margin: 0 0 16px;

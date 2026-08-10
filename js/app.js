@@ -36,7 +36,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.14.0';
+export const APP_VERSION = '1.15.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -64,6 +64,7 @@ function render() {
   renderStats();
   renderBackup();
   renderBackfill();
+  renderLastImport();
   syncAppBadge();
   // Die Detailansicht ist ein eigener Dialog, der über der Liste liegt.
   // Ohne diesen Aufruf zeigte sie nach einer Änderung weiter den Stand von
@@ -1173,7 +1174,19 @@ async function bookReceipt() {
   const { bon, entries } = receiptDraft;
   const mapping = { ...store.getSetting('receiptMap', {}) };
 
-  let gebucht = 0;
+  // Alles mitschreiben, was dieser Bon angerichtet hat. Nur so lässt er sich
+  // später in einem Zug zurücknehmen, statt zwanzig Zeilen von Hand.
+  const spur = {
+    orderNo: bon.orderNo,
+    date: bon.date,
+    at: new Date().toISOString(),
+    lots: [],
+    events: [],
+    products: [],
+    keys: [],
+    packs: 0,
+  };
+
   let angelegt = 0;
   for (const entry of entries) {
     if (!entry.take) continue;
@@ -1181,12 +1194,23 @@ async function bookReceipt() {
     if (!productId) {
       const product = await pantry.createProduct({ name: suggestedName(entry.item) });
       productId = product.id;
+      spur.products.push(product.id);
       angelegt++;
     }
-    await pantry.addStock(productId, entry.item.qty);
+    const lots = await pantry.addStock(productId, entry.item.qty);
+    const lot = Array.isArray(lots) ? lots[0] : lots;
+    if (lot) {
+      spur.lots.push(lot.id);
+      // Die Einkaufsbuchung hängt an der ersten Charge und ist darüber
+      // eindeutig wiederzufinden.
+      const event = pantry.events().find((e) => e.type === 'purchase' && e.lotId === lot.id);
+      if (event) spur.events.push(event.id);
+    }
     // Die Zuordnung merken -- beim nächsten Bon läuft diese Zeile durch.
-    mapping[normalize(entry.item.name)] = productId;
-    gebucht += entry.item.qty;
+    const key = normalize(entry.item.name);
+    mapping[key] = productId;
+    spur.keys.push(key);
+    spur.packs += entry.item.qty;
   }
 
   await store.setSetting('receiptMap', mapping);
@@ -1195,6 +1219,7 @@ async function bookReceipt() {
     // Nur die letzten Bons merken; die Liste soll nicht ewig wachsen.
     await store.setSetting('receiptOrders', [...seen.filter((n) => n !== bon.orderNo), bon.orderNo].slice(-30));
   }
+  await store.setSetting('lastImport', spur);
 
   $('#dlg-receipt').close();
   $('#receipt-input').value = '';
@@ -1202,7 +1227,78 @@ async function bookReceipt() {
   $('#receipt-hint').textContent = angelegt
     ? `${plural(angelegt, 'Produkt', 'Produkte')} neu angelegt. Haltbarkeitsdaten kannst du im Vorrat nachtragen.`
     : 'Haltbarkeitsdaten kannst du im Vorrat nachtragen.';
-  toast(`${plural(gebucht, 'Packung', 'Packungen')} eingebucht`);
+  toast(`${plural(spur.packs, 'Packung', 'Packungen')} eingebucht`);
+}
+
+/**
+ * Nimmt den zuletzt eingelesenen Bon vollständig zurück.
+ *
+ * Der Fall dahinter: Beim Kopieren ist eine Zeile abhandengekommen, und man
+ * merkt es erst hinterher. Ohne diesen Weg müsste man zwanzig Chargen einzeln
+ * wieder löschen und die neu angelegten Produkte hinterher auch noch.
+ *
+ * Zurückgenommen wird nur, was dieser Bon selbst angelegt hat. Ein Produkt,
+ * das inzwischen anderswoher Bestand oder Buchungen hat, bleibt stehen --
+ * es gehört nicht mehr allein zu diesem Bon.
+ */
+async function undoLastImport() {
+  const spur = store.getSetting('lastImport', null);
+  if (!spur) return;
+
+  // Einmal nachfragen: Ein Fehlgriff kostete zwanzig Buchungen, und einen
+  // Weg zurück gibt es dafür nicht -- nur den Bon noch einmal einzulesen.
+  const bestaetigt = confirm(
+    `${plural(spur.packs ?? 0, 'Packung', 'Packungen')} wieder ausbuchen?\n\n` +
+      'Was dieser Bon angelegt hat, wird entfernt. Was du seitdem verbraucht ' +
+      'oder von Hand geändert hast, bleibt.',
+  );
+  if (!bestaetigt) return;
+
+  // In einem Zug schreiben statt vierzig Mal: Sonst zeichnet sich die App
+  // bei jedem einzelnen Löschen neu.
+  const writes = [];
+  for (const id of spur.lots ?? []) {
+    const lot = store.byId('lots', id);
+    if (lot) writes.push(['lots', { ...lot, deleted: true }]);
+  }
+  for (const id of spur.events ?? []) {
+    const event = store.byId('events', id);
+    if (event) writes.push(['events', { ...event, deleted: true }]);
+  }
+  if (writes.length) await store.putMany(writes);
+
+  for (const id of spur.products ?? []) {
+    const hatChargen = pantry.lots().some((l) => l.productId === id);
+    const hatBuchungen = pantry.events().some((e) => e.productId === id);
+    if (!hatChargen && !hatBuchungen) await pantry.deleteProduct(id);
+  }
+
+  // Zuordnungen, die jetzt ins Leere zeigen, mitnehmen.
+  const mapping = { ...store.getSetting('receiptMap', {}) };
+  for (const key of spur.keys ?? []) {
+    if (mapping[key] && !pantry.product(mapping[key])) delete mapping[key];
+  }
+  await store.setSetting('receiptMap', mapping);
+
+  if (spur.orderNo) {
+    const seen = store.getSetting('receiptOrders', []);
+    await store.setSetting('receiptOrders', seen.filter((n) => n !== spur.orderNo));
+  }
+  await store.setSetting('lastImport', null);
+
+  $('#receipt-hint').textContent = '';
+  $('#receipt-hint').classList.remove('is-warn');
+  toast(`${plural(spur.packs ?? 0, 'Packung', 'Packungen')} wieder ausgebucht`);
+}
+
+/** Die Zeile "Zuletzt eingelesen" mitsamt dem Knopf zum Zurücknehmen. */
+function renderLastImport() {
+  const spur = store.getSetting('lastImport', null);
+  const box = $('#receipt-last');
+  box.hidden = !spur;
+  if (!spur) return;
+  const wann = spur.date ? `Lieferung vom ${formatDateLong(spur.date)}` : 'Zuletzt eingelesen';
+  $('#receipt-last-text').textContent = `${wann} — ${plural(spur.packs ?? 0, 'Packung', 'Packungen')} eingebucht.`;
 }
 
 // --- Datensicherung -------------------------------------------------------
@@ -1433,6 +1529,13 @@ function wire() {
 
   $('#btn-receipt').addEventListener('click', () => openReceipt($('#receipt-input').value));
   $('#receipt-book').addEventListener('click', bookReceipt);
+  $('#btn-receipt-clear').addEventListener('click', () => {
+    $('#receipt-input').value = '';
+    $('#receipt-hint').textContent = '';
+    $('#receipt-hint').classList.remove('is-warn');
+    $('#receipt-input').focus();
+  });
+  $('#receipt-undo').addEventListener('click', undoLastImport);
 
   $('#btn-reset-forecasts').addEventListener('click', resetAllForecasts);
   $('#btn-backfill').addEventListener('click', backfillBrands);

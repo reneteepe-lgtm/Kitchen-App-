@@ -178,8 +178,19 @@
           </label>
           <div class="button-row">
             <button id="btn-receipt" class="button button-primary">Bon prüfen</button>
+            <button id="btn-receipt-clear" class="button">Feld leeren</button>
           </div>
           <p id="receipt-hint" class="field-hint"></p>
+
+          <!--
+            Der Ausweg, wenn beim Kopieren eine Zeile fehlte und man es erst
+            nach dem Einbuchen merkt: alles auf einmal zurück statt zwanzig
+            Chargen einzeln.
+          -->
+          <div id="receipt-last" class="receipt-last" hidden>
+            <p id="receipt-last-text" class="field-hint"></p>
+            <button id="receipt-undo" class="button button-danger">Diesen Bon zurücknehmen</button>
+          </div>
         </div>
 
         <div class="card" id="backfill-card" hidden>

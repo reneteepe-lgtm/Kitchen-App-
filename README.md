@@ -142,6 +142,26 @@ Gebucht wird **ohne** Haltbarkeitsdatum. Das steht auf der Packung und nicht
 im Bon, und zwanzig Abfragen hintereinander wären keine Erleichterung —
 nachtragen lässt es sich im Vorrat je Produkt.
 
+### Wenn etwas schiefging
+
+**„Feld leeren"** wirft den eingefügten Text weg. Auf dem Handy ist einen
+langen Text von Hand zu markieren und zu löschen unnötig mühsam.
+
+**„Diesen Bon zurücknehmen"** macht einen eingebuchten Bon vollständig
+rückgängig — der Fall, dass beim Kopieren eine Zeile fehlte und man es erst
+hinterher merkt. Ohne diesen Weg müsste man zwanzig Chargen einzeln löschen
+und die neu angelegten Produkte hinterher auch noch.
+
+Zurückgenommen wird nur, was dieser Bon selbst angelegt hat: seine Chargen,
+seine Einkaufsbuchungen und die Produkte, die es vorher nicht gab. Ein
+Produkt, das inzwischen anderswoher Bestand oder Buchungen hat, bleibt
+stehen — es gehört nicht mehr allein zu diesem Bon. Die Bestellnummer wird
+wieder freigegeben, damit derselbe Bon erneut eingelesen werden kann, und
+Zuordnungen, die ins Leere zeigen würden, werden aufgeräumt.
+
+Dafür wird einmal nachgefragt. Ein Fehlgriff kostete zwanzig Buchungen, und
+einen Weg zurück gibt es dafür nicht — nur den Bon noch einmal einzulesen.
+
 ## Punkt auf dem App-Symbol
 
 Unter **Mehr → Einstellungen** lässt sich ein Punkt auf dem Startbildschirm
