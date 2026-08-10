@@ -39,7 +39,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.19.0';
+export const APP_VERSION = '1.19.1';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -886,7 +886,8 @@ function guessBestBefore(product, from = new Date()) {
   if (!product) return null;
   return estimateBestBefore({
     text: `${product.brand ?? ''} ${product.name ?? ''}`,
-    categoryId: categoryOf(product).id,
+    // `categoryOf` liefert die Kennung selbst, kein Objekt.
+    categoryId: categoryOf(product),
     learned: product.shelfLifeDays ?? null,
     from,
   });
@@ -1122,6 +1123,38 @@ async function migrateMinStock() {
   }
   await store.setSetting('minStockZeroed', true);
   return betroffen.length;
+}
+
+/**
+ * Zieht schon vergebene Schätzungen nach, wenn die Erfahrungswerte besser
+ * geworden sind.
+ *
+ * Die Tabellen in `js/shelflife.js` und `js/categories.js` lernen mit jeder
+ * Korrektur dazu -- "Bresso ist Frischkäse", "Kritharaki sind Nudeln". Ohne
+ * diesen Schritt behielte eine einmal falsch geschätzte Charge ihr Datum für
+ * immer, und gerade die zu lang geschätzten fallen niemandem auf: Die
+ * Warnung bleibt einfach aus.
+ *
+ * Angefasst wird ausschließlich, was als Schätzung gekennzeichnet ist. Ein
+ * von der Packung abgelesenes Datum ist unantastbar.
+ */
+const ESTIMATE_REVISION = 2;
+
+async function refreshEstimates() {
+  if (store.getSetting('estimateRevision', 0) >= ESTIMATE_REVISION) return 0;
+
+  const writes = [];
+  for (const lot of pantry.lots()) {
+    if (!lot.estimated || !lot.bestBefore) continue;
+    const product = pantry.product(lot.productId);
+    if (!product) continue;
+    // Ab dem Einbuchen gerechnet -- dasselbe Kaufdatum wie damals.
+    const neu = guessBestBefore(product, lot.addedAt ? new Date(lot.addedAt) : new Date());
+    if (neu && neu !== lot.bestBefore) writes.push(['lots', { ...lot, bestBefore: neu }]);
+  }
+  if (writes.length) await store.putMany(writes);
+  await store.setSetting('estimateRevision', ESTIMATE_REVISION);
+  return writes.length;
 }
 
 // --- Doppelte zusammenführen ----------------------------------------------
@@ -1812,6 +1845,7 @@ async function main() {
   // Vor dem ersten Zeichnen und vor dem Abonnement: So läuft die Umstellung
   // genau einmal durch, ohne dass die Liste dabei zweimal aufgebaut wird.
   const gesenkt = await migrateMinStock();
+  const nachgezogen = await refreshEstimates();
 
   store.subscribe(render);
 
@@ -1832,6 +1866,8 @@ async function main() {
   // mitbekommen, auch wenn man sie selbst veranlasst hat.
   if (gesenkt) {
     toast(`Mindestbestand bei ${plural(gesenkt, 'Produkt', 'Produkten')} auf 0 gesetzt`);
+  } else if (nachgezogen) {
+    toast(`Haltbarkeit bei ${plural(nachgezogen, 'Charge', 'Chargen')} neu geschätzt`);
   }
 
   /*

@@ -43,12 +43,19 @@ export const CATEGORY_SHELF_LIFE = {
 };
 
 /**
- * Stichwörter, die das Fach überstimmen.
+ * Stichwörter, die das Fach genauer machen.
  *
- * Getroffen wird, wenn ein Wort des Namens mit dem Stamm anfängt oder aufhört
- * -- wie bei den Fächern, damit "Vollmilch" und "H-Milch" beide greifen. Die
- * Liste steht nach Länge sortiert im Zugriff: Der genauere Treffer gewinnt,
- * sonst machte "milch" die "h-milch" wieder zunichte.
+ * `[Stamm, Tage]` oder `[Stamm, Tage, nur in diesem Fach]`.
+ *
+ * Die dritte Angabe ist wichtiger, als sie aussieht: "Tomate" heißt acht
+ * Tage -- aber nur im Gemüsefach. Passierte Tomaten stehen bei den Konserven
+ * und halten Monate; ohne die Einschränkung machte das Stichwort aus einer
+ * Flasche Passata frisches Gemüse. Die Stichwörter sollen innerhalb eines
+ * Fachs unterscheiden, nicht über die Fächer hinweg.
+ *
+ * Ohne dritte Angabe gilt ein Stichwort überall -- das ist für alles
+ * richtig, was unabhängig vom Fach dasselbe bedeutet ("Dose", "Bouillon",
+ * "Salz").
  */
 export const KEYWORD_SHELF_LIFE = [
   // Lange haltbar, obwohl es im Kühlregal steht.
@@ -59,28 +66,41 @@ export const KEYWORD_SHELF_LIFE = [
   // Konserviertes, das oft im Namen gar nicht danach klingt
   ['bouillon', 540], ['bruehe', 540], ['fond', 540], ['brueh', 540],
   // Kühlschrank, nach Verderblichkeit
-  ['frischmilch', 8], ['vollmilch', 8], ['rohmilch', 4],
+  ['frischmilch', 8, 'dairy'], ['vollmilch', 8, 'dairy'], ['rohmilch', 4, 'dairy'],
   ['joghurt', 18], ['jogurt', 18], ['skyr', 18], ['quark', 18], ['kefir', 14],
-  ['schmand', 21], ['creme fraiche', 21], ['sahne', 14], ['schlagsahne', 14],
+  ['schmand', 21], ['creme fraiche', 21], ['sahne', 14, 'dairy'], ['schlagsahne', 14],
   ['frischkaese', 21], ['mozzarella', 21], ['feta', 45], ['gouda', 30],
-  ['butter', 40], ['margarine', 60], ['eier', 21],
-  // Fleisch und Fisch
-  ['hackfleisch', 2], ['hack', 2], ['gehacktes', 2],
-  ['fisch', 3], ['lachs', 4], ['garnele', 3], ['raeucherlachs', 10],
-  ['wurst', 8], ['salami', 40], ['schinken', 12], ['speck', 30],
-  ['haehnchen', 3], ['pute', 3], ['rind', 4], ['schwein', 4], ['steak', 4],
-  // Obst und Gemüse, sehr unterschiedlich
-  ['beere', 3], ['beeren', 3], ['himbeere', 3], ['erdbeere', 3],
-  ['salat', 4], ['rucola', 4], ['spinat', 4],
-  ['dill', 5], ['petersilie', 5], ['basilikum', 6], ['schnittlauch', 5],
-  ['banane', 5], ['avocado', 5], ['pilz', 5], ['champignon', 5],
-  ['brokkoli', 7], ['zucchini', 8], ['gurke', 8], ['tomate', 8],
-  ['paprika', 10], ['moehre', 21], ['karotte', 21], ['kohl', 21],
-  ['apfel', 21], ['orange', 14], ['zitrone', 21],
-  ['zwiebel', 45], ['knoblauch', 60], ['kartoffel', 45], ['kuerbis', 45],
+  // Marken, die für eine bestimmte Ware stehen
+  ['bresso', 25], ['philadelphia', 25], ['miree', 25], ['exquisa', 25],
+  ['kritharaki', 540], ['orzo', 540],
+  ['butter', 40, 'dairy'], ['margarine', 60, 'dairy'], ['eier', 21],
+  // Fleisch und Fisch -- frisch. In der Dose gilt das Fach.
+  ['hackfleisch', 2, 'meat'], ['hack', 2, 'meat'], ['gehacktes', 2, 'meat'],
+  ['fisch', 3, 'meat'], ['lachs', 4, 'meat'], ['garnele', 3, 'meat'],
+  ['raeucherlachs', 10, 'meat'],
+  ['wurst', 8, 'meat'], ['salami', 40, 'meat'], ['schinken', 12, 'meat'], ['speck', 30, 'meat'],
+  ['haehnchen', 3, 'meat'], ['pute', 3, 'meat'], ['rind', 4, 'meat'],
+  ['schwein', 4, 'meat'], ['steak', 4, 'meat'],
+  // Obst und Gemüse -- frisch, also nur im Gemüsefach. Dieselben Wörter
+  // stehen sonst auf Konserven und Tiefkühlware.
+  ['beere', 3, 'produce'], ['beeren', 3, 'produce'], ['himbeere', 3, 'produce'],
+  ['erdbeere', 3, 'produce'],
+  ['salat', 4, 'produce'], ['rucola', 4, 'produce'], ['spinat', 4, 'produce'],
+  ['dill', 5, 'produce'], ['petersilie', 5, 'produce'], ['basilikum', 6, 'produce'],
+  ['schnittlauch', 5, 'produce'],
+  ['banane', 5, 'produce'], ['avocado', 5, 'produce'], ['pilz', 5, 'produce'],
+  ['champignon', 5, 'produce'],
+  ['brokkoli', 7, 'produce'], ['zucchini', 8, 'produce'], ['gurke', 8, 'produce'],
+  ['tomate', 8, 'produce'],
+  ['paprika', 10, 'produce'], ['moehre', 21, 'produce'], ['karotte', 21, 'produce'],
+  ['kohl', 21, 'produce'],
+  ['apfel', 21, 'produce'], ['orange', 14, 'produce'], ['zitrone', 21, 'produce'],
+  ['zwiebel', 45, 'produce'], ['knoblauch', 60, 'produce'],
+  ['kartoffel', 45, 'potato'], ['kuerbis', 45, 'produce'],
   // Trockenes und Konserven
   ['dose', 730], ['konserve', 730], ['glas', 540],
-  ['brot', 5], ['broetchen', 3], ['toast', 12], ['baguette', 3],
+  ['brot', 5, 'breakfast'], ['broetchen', 3, 'breakfast'],
+  ['toast', 12, 'breakfast'], ['baguette', 3, 'breakfast'],
   ['mehl', 365], ['zucker', 730], ['salz', 1825], ['reis', 730],
   ['nudel', 540], ['pasta', 540], ['oel', 365], ['essig', 730],
   ['kaffee', 270], ['tee', 540], ['honig', 1095],
@@ -111,7 +131,9 @@ export function shelfLifeDays(text, categoryId) {
    * am Wortanfang, und erst bei gleichem Rang zählt die Länge.
    */
   let best = null;
-  for (const [stem, days] of SORTED_KEYWORDS) {
+  for (const [stem, days, onlyIn] of SORTED_KEYWORDS) {
+    // Ein an ein Fach gebundenes Stichwort gilt nur dort.
+    if (onlyIn && onlyIn !== categoryId) continue;
     let rank = 0;
     if (stem.includes(' ')) {
       // Eine Wortfolge: "H-Milch" wird zu "h milch" und ist kein Wort mehr.

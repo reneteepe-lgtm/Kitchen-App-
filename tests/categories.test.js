@@ -329,3 +329,19 @@ test('keine Kennung kommt doppelt vor', () => {
   const ids = CATEGORIES.map((c) => c.id);
   assert.equal(new Set(ids).size, ids.length);
 });
+
+test('Marken, die für nichts anderes stehen als für die Ware', () => {
+  // "Bresso Kräuter der Provence" ist Frischkäse, kein Gewürz -- das
+  // längere "Kräuter" gewänne sonst.
+  assert.equal(categoryOf({ brand: 'Bresso', name: 'Kräuter der Provence Balance 150 g' }), 'dairy');
+  assert.equal(categoryOf({ brand: 'Philadelphia', name: 'Balance' }), 'dairy');
+  // Ohne die Marke bleibt es beim Gewürz.
+  assert.equal(categoryOf({ name: 'Kräuter der Provence' }), 'spice');
+});
+
+test('Kritharaki sind Nudeln', () => {
+  // Im Namen steckt kein bekanntes Grundwort; ohne eigenen Eintrag fielen
+  // sie ins Auffangfach.
+  assert.equal(categoryOf({ brand: 'Mylos', name: 'Kritharaki 500 g' }), 'pasta');
+  assert.equal(categoryOf({ name: 'Orzo' }), 'pasta');
+});

@@ -341,8 +341,18 @@ Salat und hält vier Tage, keine Kartoffel mit sechs Wochen. Ein Stamm am
 Wortende schlägt deshalb einen am Wortanfang. Kurze Stämme greifen nur als
 ganzes Wort — sonst endete „Kartoffelbrei" auf „ei" und hielte drei Wochen.
 
+Ein Stichwort gilt außerdem oft nur **in seinem Fach**: „Tomate" heißt acht
+Tage — aber nur im Gemüsefach. Passierte Tomaten stehen bei den Konserven und
+halten Monate. Was unabhängig vom Fach dasselbe bedeutet („Dose", „Bouillon",
+„Salz"), gilt dagegen überall.
+
 Gerechnet wird ab dem **Kaufdatum**, beim Bon also ab dem Lieferdatum und
 nicht ab dem Tag, an dem er eingelesen wird.
+
+Werden die Erfahrungswerte besser, zieht die App schon vergebene Schätzungen
+beim nächsten Start nach — sonst behielte eine einmal zu lang geschätzte
+Charge ihr Datum für immer, und gerade das fiele niemandem auf: Die Warnung
+bliebe einfach aus. Abgelesene Daten sind dabei unantastbar.
 
 **Ein geschätztes Datum sieht nie aus wie ein abgelesenes.** In der Liste
 steht eine Tilde (`MHD ~ noch 5 Tage`), in der Detailansicht „(geschätzt)",

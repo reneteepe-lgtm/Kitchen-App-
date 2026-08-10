@@ -101,3 +101,26 @@ test('unsinnige Abstände taugen nicht als Regel', () => {
   assert.equal(learnShelfLife(null), null);
   assert.equal(learnShelfLife('kein Datum'), null);
 });
+
+// --- Was das Fach vom Stichwort trennt -----------------------------------
+
+test('ein Stichwort für Frisches gilt nicht für die Konserve', () => {
+  // Genau der Fehlgriff, der sonst entstünde: "Tomate" heißt acht Tage,
+  // aber eine Flasche Passata steht bei den Konserven und hält Monate.
+  assert.equal(shelfLifeDays('Tomaten 500 g', 'produce'), 8);
+  assert.equal(shelfLifeDays('Baresa Tomaten passiert 500 g', 'sauce'), 540);
+  assert.equal(shelfLifeDays('Tiefkühlerbsen', 'frozen'), 180);
+});
+
+test('was unabhängig vom Fach gilt, gilt überall', () => {
+  // "Dose" sagt etwas über die Haltbarkeit, ganz gleich was drin ist.
+  assert.equal(shelfLifeDays('Thunfisch in Öl Dose', 'meat'), 730);
+  assert.equal(shelfLifeDays('Kichererbsen Dose', 'potato'), 730);
+});
+
+test('häufig gekaufte Sonderfälle sitzen', () => {
+  // Bresso ist immer Frischkäse, egal was sonst auf der Packung steht,
+  // und Kritharaki sind Nudeln.
+  assert.equal(shelfLifeDays('Bresso Kräuter der Provence Balance 150 g', 'dairy'), 25);
+  assert.equal(shelfLifeDays('Mylos Kritharaki 500 g', 'pasta'), 540);
+});

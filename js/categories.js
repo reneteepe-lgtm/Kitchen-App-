@@ -34,6 +34,9 @@ export const CATEGORIES = [
       'tagliatelle', 'linguine', 'makkaroni', 'lasagne', 'spaetzle', 'tortellini',
       'gnocchi', 'ravioli', 'pasta', 'reis', 'risotto', 'basmati', 'jasminreis',
       'couscous', 'bulgur', 'quinoa', 'polenta',
+      // Griechische Reisnudeln; ohne diesen Eintrag fielen sie durch alle
+      // Fächer, weil im Namen kein bekanntes Grundwort steht.
+      'kritharaki', 'orzo',
     ],
   },
   {
@@ -99,7 +102,7 @@ export const CATEGORIES = [
     label: 'Frühstück & Brot',
     icon: '🍞',
     keywords: [
-      'brot', 'broetchen', 'toast', 'knaeckebrot', 'zwieback', 'muesli',
+      'brot', 'broetchen', 'buns', 'bun', 'toast', 'knaeckebrot', 'zwieback', 'muesli',
       'haferflocke', 'cornflakes', 'flocken', 'marmelade', 'konfituere',
       'gelee', 'honig', 'nutella', 'nussnougatcreme', 'aufstrich',
     ],
@@ -108,6 +111,15 @@ export const CATEGORIES = [
     id: 'dairy',
     label: 'Milch & Käse',
     icon: '🧀',
+    /**
+     * Marken, die für nichts anderes stehen als für die Ware selbst.
+     *
+     * Als gewöhnliches Stichwort reichte das nicht: Bei "Bresso Kräuter der
+     * Provence" gewinnt sonst das längere "kraeuter" und macht aus dem
+     * Frischkäse ein Gewürz. Ein Marker sagt nicht, was die Ware ist,
+     * sondern wo sie hingehört -- und schlägt deshalb jedes Grundwort.
+     */
+    markers: ['bresso', 'philadelphia', 'miree', 'exquisa', 'almighurt', 'landliebe'],
     keywords: [
       'milch', 'joghurt', 'jogurt', 'quark', 'kaese', 'butter', 'margarine',
       'sahne', 'schmand', 'creme', 'frischkaese', 'mozzarella', 'parmesan',
@@ -139,6 +151,9 @@ export const CATEGORIES = [
       'zucchini', 'aubergine', 'brokkoli', 'broccoli', 'blumenkohl', 'spinat', 'kohl',
       'lauch', 'sellerie', 'pilz', 'champignon', 'gemuese', 'avocado',
       'mais', 'spargel', 'kuerbis', 'radieschen', 'rettich', 'fenchel', 'rucola',
+      // Frische Kräuter liegen im Gemüsefach. Getrocknetes steht unter
+      // Gewürzen -- deshalb hier nur, was üblicherweise frisch verkauft wird.
+      'dill', 'petersilie', 'schnittlauch',
     ],
   },
   {
