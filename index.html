@@ -160,6 +160,28 @@
           <p id="storage-state" class="field-hint"></p>
         </div>
 
+        <div class="card">
+          <h2>Bon einlesen</h2>
+          <p class="field-hint">
+            Für Lieferungen von Picnic: Bon-E-Mail öffnen, den Text ganz auswählen,
+            kopieren und hier einfügen. Die App zeigt dir, was sie verstanden hat, bevor
+            etwas eingebucht wird. Es bleibt alles auf diesem Gerät.
+          </p>
+          <label class="field">
+            <span class="visually-hidden">Bon-Text</span>
+            <textarea
+              id="receipt-input"
+              rows="3"
+              placeholder="Hier den kopierten Bon einfügen…"
+              autocomplete="off"
+            ></textarea>
+          </label>
+          <div class="button-row">
+            <button id="btn-receipt" class="button button-primary">Bon prüfen</button>
+          </div>
+          <p id="receipt-hint" class="field-hint"></p>
+        </div>
+
         <div class="card" id="backfill-card" hidden>
           <h2>Marken nachtragen</h2>
           <p class="field-hint" id="backfill-info"></p>
@@ -335,6 +357,21 @@
     <!-- Produktdetails -->
     <dialog id="dlg-detail" class="dialog">
       <div id="detail-body"></div>
+    </dialog>
+
+    <!--
+      Der gelesene Bon, bevor irgendetwas gebucht wird. Picnic liefert keine
+      Barcodes mit, also muss die App raten, welches Produkt gemeint ist —
+      und geraten wird nur mit Bestätigung.
+    -->
+    <dialog id="dlg-receipt" class="dialog">
+      <h2 id="receipt-title">Bon</h2>
+      <p id="receipt-note" class="field-hint"></p>
+      <ul id="receipt-list" class="receipt-list"></ul>
+      <div class="button-row">
+        <button type="button" class="button button-ghost" data-close>Abbrechen</button>
+        <button type="button" class="button button-primary" id="receipt-book">Einbuchen</button>
+      </div>
     </dialog>
 
     <div id="toast" class="toast" hidden role="status" aria-live="polite">

@@ -723,6 +723,89 @@ main {
   background: #000;
 }
 
+/* --- Bon einlesen ------------------------------------------------------- */
+
+/* Für Beschriftungen, die nur Vorlesehilfen brauchen. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  /* Ein Bon ist lang; die Zeilen sollen nicht mitwandern. */
+  resize: vertical;
+}
+
+.receipt-list {
+  max-height: 55vh;
+  margin: 0 0 16px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.receipt-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.receipt-row input[type='checkbox'] {
+  grid-row: span 2;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.receipt-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.receipt-qty {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+/* Wohin es gebucht wird -- das ist die eigentliche Entscheidung je Zeile. */
+.receipt-row select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+}
+
+/* Ein neues Produkt ist die folgenreichere Wahl und darf auffallen. */
+.receipt-row select.is-new {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.receipt-row.is-off {
+  opacity: 0.45;
+}
+
 /* --- Hinweis über der Liste --------------------------------------------- */
 
 /*

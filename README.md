@@ -84,6 +84,64 @@ dazu die Stellen, an denen ein Fehler still bliebe: die Formatnamen der
 Barcode-Bibliothek, die Dateiliste des Service Workers und der Gleichlauf
 der beiden Versionsangaben.
 
+## Bon einlesen
+
+Wer online bestellt, will die Lieferung nicht von Hand abtippen. Unter
+**Mehr → Bon einlesen** lässt sich die Bon-E-Mail einer
+[Picnic](https://picnic.app)-Lieferung einfügen: kopieren, einfügen,
+durchsehen, einbuchen.
+
+Bewusst über die E-Mail und nicht über eine Schnittstelle. Picnic hat keine
+offene Schnittstelle; die nachgebauten Zugänge verlangen die Zugangsdaten des
+Kontos, an dem eine Zahlungsart hängt, brauchen einen Server dazwischen (der
+Browser darf fremde Seiten nicht direkt abfragen) und können jederzeit
+wegbrechen. Der Bon dagegen ist der eigene Beleg, und er wird auf dem eigenen
+Gerät gelesen — nichts verlässt das Telefon.
+
+### Wie der Bon gelesen wird
+
+Beim Kopieren wird aus der Tabelle der E-Mail eine schlichte Folge von
+Zeilen. Ein Artikel sieht darin so aus:
+
+```
+1                              ← Anzahl
+Mylos Kritharaki<TAB><TAB>     ← Bildbeschreibung
+Mylos Kritharaki               ← Bezeichnung
+500g                           ← Größe
+15% Rabatt                     ← nur manchmal
+1                              ← Preis, in drei Zeilen zerlegt
+69
+.
+```
+
+Anker ist die **Größenzeile**: Sie steht bei jedem Artikel und sieht anders
+aus als alles andere im Bon. Bezeichnung und Anzahl werden von dort aus
+rückwärts gelesen. Die Preise werden gar nicht erst angefasst — sie zerfallen
+beim Kopieren in einzelne Ziffernzeilen und wären nur eine Fehlerquelle.
+Pfand, Tüten, Zwischensumme und Mehrwertsteuer stehen im selben Format wie
+ein Artikel und werden deshalb ausdrücklich ausgeschlossen.
+
+Die Größe wandert in den Namen: `Broccoli 500 g`. Denn „Frischkäse 300 g" und
+„Frischkäse 150 g" sind zwei verschiedene Dinge im Schrank. Nur „1 Stück"
+bleibt weg — das sagt nichts über die Packung.
+
+### Warum nichts ungefragt gebucht wird
+
+Picnic liefert **keine Barcodes** mit, nur Bezeichnungen. Die App muss also
+raten, welches Produkt im Vorrat gemeint ist, und Geratenes wird nicht
+stillschweigend gebucht: Die Prüfliste zeigt je Zeile, wohin sie geht, und
+lässt beides ändern — Ziel und Ob-überhaupt. Ein falsch zugeordneter Einkauf
+verdürbe die Prognose gleich zweier Produkte.
+
+Jede bestätigte Zuordnung wird gemerkt (Bezeichnung → Produkt). Ab dem
+zweiten oder dritten Einkauf läuft deshalb das meiste von allein durch. Die
+Bestellnummer wird ebenfalls vermerkt, damit ein zweites Einlesen desselben
+Bons auffällt, bevor alles doppelt zählt.
+
+Gebucht wird **ohne** Haltbarkeitsdatum. Das steht auf der Packung und nicht
+im Bon, und zwanzig Abfragen hintereinander wären keine Erleichterung —
+nachtragen lässt es sich im Vorrat je Produkt.
+
 ## Punkt auf dem App-Symbol
 
 Unter **Mehr → Einstellungen** lässt sich ein Punkt auf dem Startbildschirm
@@ -508,6 +566,7 @@ js/search.js        Nachsichtige Suche und die Antwort "haben wir das?"
 js/categories.js    Fächer und die automatische Zuordnung nach Namen
 js/backup.js        Wann an eine Sicherung erinnert wird
 js/badge.js         Der Punkt auf dem App-Symbol
+js/receipt.js       Liest den Bon einer Picnic-Lieferung
 js/format.js        Aufbereitung der Zahlen für die Anzeige
 js/app.js           Verdrahtung von Daten und Oberfläche
 vendor/zbar-wasm/   Barcode-Erkennung für iOS (LGPL, siehe Ordner-README)

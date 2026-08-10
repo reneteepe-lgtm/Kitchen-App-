@@ -11,7 +11,8 @@ import { backupStatus, describeBackupAge, formatBytes, snoozeUntil } from './bac
 import { applyBadge, askNotificationPermission, describeBadgeState, supportsBadge } from './badge.js';
 import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.js';
 import { BarcodeScanner, isScanSupported, lookupBarcode, stripBrand, suggestProduct } from './barcode.js';
-import { stockAnswer } from './search.js';
+import { normalize, stockAnswer } from './search.js';
+import { parseReceipt, suggestedName } from './receipt.js';
 import {
   CATEGORIES,
   categoriesInShoppingOrder,
@@ -35,7 +36,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.13.0';
+export const APP_VERSION = '1.14.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -1027,6 +1028,183 @@ async function backfillBrands() {
   }
 }
 
+// --- Bon einlesen ---------------------------------------------------------
+
+/**
+ * Ab dieser Passung wird ein vorhandenes Produkt vorgeschlagen.
+ *
+ * Darunter wird lieber ein neues angelegt: Ein falsch zugeordneter Einkauf
+ * verdirbt die Prognose zweier Produkte auf einmal -- des getroffenen und
+ * des gemeinten. Ein Produkt zu viel ist in einem Wisch gelöscht.
+ */
+const RECEIPT_MATCH = 0.7;
+
+/** Was der Bon zuletzt ergeben hat, zwischen Prüfen und Einbuchen. */
+let receiptDraft = null;
+
+/**
+ * Sucht zu einer Bon-Zeile das passende Produkt.
+ *
+ * Zuerst wird nachgesehen, ob dieselbe Bezeichnung schon einmal zugeordnet
+ * wurde -- eine bestätigte Zuordnung schlägt jedes Raten. Deshalb muss man
+ * das nur beim ersten Einkauf durchgehen.
+ */
+function matchReceiptItem(item, mapping) {
+  const key = normalize(item.name);
+  const remembered = mapping[key];
+  if (remembered && pantry.product(remembered)) return { productId: remembered, sure: true };
+
+  const [best] = pantry.search(suggestedName(item));
+  const fallback = best ?? pantry.search(item.name)[0];
+  if (fallback && fallback.score >= RECEIPT_MATCH) {
+    return { productId: fallback.product.id, sure: false };
+  }
+  return { productId: null, sure: false };
+}
+
+function receiptRow(entry, index) {
+  const row = el('li', 'receipt-row');
+
+  const take = el('input');
+  take.type = 'checkbox';
+  take.checked = entry.take;
+  take.setAttribute('aria-label', `${entry.item.name} einbuchen`);
+  take.addEventListener('change', () => {
+    entry.take = take.checked;
+    row.classList.toggle('is-off', !take.checked);
+    updateReceiptButton();
+  });
+
+  const label = el('div', 'receipt-name');
+  label.append(suggestedName(entry.item));
+  if (entry.item.qty > 1) label.appendChild(el('span', 'receipt-qty', ` ×${entry.item.qty}`));
+
+  // Wohin gebucht wird. Eine Auswahlliste statt einer Suche: Sie öffnet auf
+  // dem Handy die Systemauswahl, und die ist mit einer Hand bedienbar.
+  const target = el('select');
+  target.id = `receipt-target-${index}`;
+  target.setAttribute('aria-label', `Ziel für ${entry.item.name}`);
+  const neu = el('option', null, 'Neu anlegen');
+  neu.value = '';
+  target.appendChild(neu);
+  for (const product of pantry.products()) {
+    const option = el('option', null, product.name);
+    option.value = product.id;
+    target.appendChild(option);
+  }
+  target.value = entry.productId ?? '';
+  target.classList.toggle('is-new', !entry.productId);
+  target.addEventListener('change', () => {
+    entry.productId = target.value || null;
+    entry.chosen = true;
+    target.classList.toggle('is-new', !entry.productId);
+  });
+
+  row.classList.toggle('is-off', !entry.take);
+  row.append(take, label, target);
+  return row;
+}
+
+/**
+ * Der Knopf sagt, was gleich passiert.
+ *
+ * Abwählen soll sichtbar wirken -- sonst weiß man nach dem Durchsehen nicht,
+ * ob man wirklich etwas verändert hat.
+ */
+function updateReceiptButton() {
+  const button = $('#receipt-book');
+  const gewaehlt = (receiptDraft?.entries ?? []).filter((e) => e.take);
+  const packungen = gewaehlt.reduce((sum, e) => sum + e.item.qty, 0);
+  button.disabled = packungen === 0;
+  button.textContent = packungen === 0
+    ? 'Nichts ausgewählt'
+    : `${plural(packungen, 'Packung', 'Packungen')} einbuchen`;
+}
+
+function openReceipt(text) {
+  const bon = parseReceipt(text);
+  const hint = $('#receipt-hint');
+
+  if (!bon.items.length) {
+    hint.textContent =
+      'Daraus konnte ich keine Artikel lesen. Ist der ganze Bon kopiert — von „Dein Bon“ bis unten?';
+    hint.classList.add('is-warn');
+    return;
+  }
+
+  const seen = store.getSetting('receiptOrders', []);
+  const mapping = store.getSetting('receiptMap', {});
+  const entries = bon.items.map((item) => ({
+    item,
+    take: true,
+    chosen: false,
+    ...matchReceiptItem(item, mapping),
+  }));
+  receiptDraft = { bon, entries };
+
+  $('#receipt-title').textContent = bon.date
+    ? `Lieferung vom ${formatDateLong(bon.date)}`
+    : 'Bon einlesen';
+
+  const known = bon.orderNo && seen.includes(bon.orderNo);
+  const neue = entries.filter((e) => !e.productId).length;
+  $('#receipt-note').textContent = known
+    ? 'Diesen Bon hast du schon einmal eingebucht — noch einmal, und alles zählt doppelt.'
+    : `${plural(entries.length, 'Artikel', 'Artikel')}, davon ${neue} noch nicht im Vorrat. Bitte kurz durchsehen.`;
+  $('#receipt-note').classList.toggle('is-warn', known);
+
+  $('#receipt-list').replaceChildren(...entries.map(receiptRow));
+  updateReceiptButton();
+  hint.textContent = '';
+  hint.classList.remove('is-warn');
+  $('#dlg-receipt').showModal();
+}
+
+/**
+ * Bucht ein, was ausgewählt ist.
+ *
+ * Ohne Haltbarkeitsdatum: Das steht auf der Packung und nicht im Bon, und
+ * zwanzig Abfragen hintereinander wäre keine Erleichterung. Es lässt sich
+ * hinterher im Vorrat je Produkt nachtragen -- darauf weist der Hinweis am
+ * Ende hin.
+ */
+async function bookReceipt() {
+  if (!receiptDraft) return;
+  const { bon, entries } = receiptDraft;
+  const mapping = { ...store.getSetting('receiptMap', {}) };
+
+  let gebucht = 0;
+  let angelegt = 0;
+  for (const entry of entries) {
+    if (!entry.take) continue;
+    let productId = entry.productId;
+    if (!productId) {
+      const product = await pantry.createProduct({ name: suggestedName(entry.item) });
+      productId = product.id;
+      angelegt++;
+    }
+    await pantry.addStock(productId, entry.item.qty);
+    // Die Zuordnung merken -- beim nächsten Bon läuft diese Zeile durch.
+    mapping[normalize(entry.item.name)] = productId;
+    gebucht += entry.item.qty;
+  }
+
+  await store.setSetting('receiptMap', mapping);
+  if (bon.orderNo) {
+    const seen = store.getSetting('receiptOrders', []);
+    // Nur die letzten Bons merken; die Liste soll nicht ewig wachsen.
+    await store.setSetting('receiptOrders', [...seen.filter((n) => n !== bon.orderNo), bon.orderNo].slice(-30));
+  }
+
+  $('#dlg-receipt').close();
+  $('#receipt-input').value = '';
+  receiptDraft = null;
+  $('#receipt-hint').textContent = angelegt
+    ? `${plural(angelegt, 'Produkt', 'Produkte')} neu angelegt. Haltbarkeitsdaten kannst du im Vorrat nachtragen.`
+    : 'Haltbarkeitsdaten kannst du im Vorrat nachtragen.';
+  toast(`${plural(gebucht, 'Packung', 'Packungen')} eingebucht`);
+}
+
 // --- Datensicherung -------------------------------------------------------
 
 /**
@@ -1252,6 +1430,9 @@ function wire() {
     lastBadge = null;
     await store.setSetting('badgeEnabled', wanted);
   });
+
+  $('#btn-receipt').addEventListener('click', () => openReceipt($('#receipt-input').value));
+  $('#receipt-book').addEventListener('click', bookReceipt);
 
   $('#btn-reset-forecasts').addEventListener('click', resetAllForecasts);
   $('#btn-backfill').addEventListener('click', backfillBrands);

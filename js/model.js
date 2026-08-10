@@ -135,6 +135,11 @@ export class Pantry {
     return this.products().find((p) => p.barcode === barcode);
   }
 
+  /** Ein einzelnes Produkt, oder undefined, wenn es das nicht (mehr) gibt. */
+  product(productId) {
+    return this.store.byId('products', productId);
+  }
+
   /** Sucht im Vorrat -- nachsichtig gegenüber Schreibweise und Tippfehlern. */
   search(query) {
     const lots = this.lots();
