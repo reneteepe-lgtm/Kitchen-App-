@@ -128,6 +128,19 @@
             <span class="field-hint">Ab wie vielen Tagen vor dem MHD gewarnt wird.</span>
             <input id="setting-expiry" type="number" min="0" max="60" step="1" />
           </label>
+
+          <label class="switch">
+            <input id="setting-badge" type="checkbox" />
+            <span>
+              Punkt auf dem App-Symbol
+              <span class="field-hint">
+                Zeigt auf dem Startbildschirm, wie viel demnächst abläuft — dieselbe Zahl
+                wie am Reiter „Ablauf“. Sie entsteht, während die App offen ist, und bleibt
+                dann so stehen: ein Merkzettel, kein Wecker.
+              </span>
+            </span>
+          </label>
+          <p id="badge-state" class="field-hint"></p>
         </div>
 
         <div class="card">

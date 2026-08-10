@@ -84,6 +84,34 @@ dazu die Stellen, an denen ein Fehler still bliebe: die Formatnamen der
 Barcode-Bibliothek, die Dateiliste des Service Workers und der Gleichlauf
 der beiden Versionsangaben.
 
+## Punkt auf dem App-Symbol
+
+Unter **Mehr → Einstellungen** lässt sich ein Punkt auf dem Startbildschirm
+einschalten. Er zeigt dieselbe Zahl wie der Reiter *Ablauf*: was innerhalb
+der Warnfrist aufgebraucht werden sollte, samt dem, was schon abgelaufen ist.
+
+Die Einkaufsliste zählt bewusst **nicht** mit. Die braucht keine
+Aufmerksamkeit, solange man zu Hause ist — die schaut man im Laden an. Ein
+Punkt, der ständig da ist, wird nach zwei Wochen nicht mehr gelesen; kein
+Punkt soll heißen: nichts liegt an.
+
+**Was der Punkt nicht kann, ist wichtiger als was er kann:** Eine Web-App
+rechnet nur, während sie läuft. Die Zahl entsteht in dem Augenblick, in dem
+die App zuletzt offen war — deshalb wird beim Zuklappen (`visibilitychange`)
+noch einmal nachgerechnet — und steht dann so lange, bis die App wieder
+geöffnet wird. Kommt am Donnerstag etwas dazu, zählt sie nicht von selbst
+hoch. Er ist ein Merkzettel, kein Wecker, und genau so steht es auch im
+Schalter. Für einen echten Wecker bräuchte es Push-Mitteilungen und dafür
+einen Dienst im Netz.
+
+Aus, bis jemand ihn einschaltet. Gefragt wird erst beim Umlegen des
+Schalters, nicht beim Start: Eine Erlaubnisfrage aus dem Nichts ist die
+sicherste Art, ein „nein“ zu bekommen, das sich nicht zurücknehmen lässt.
+Auf dem iPhone hängt der Punkt an der Mitteilungs-Erlaubnis (ab iOS 16.4, nur
+vom Startbildschirm aus), auf Android braucht es sie nicht. Unter dem
+Schalter steht der tatsächliche Zustand — auch dann, wenn das Gerät es nicht
+kann oder die Erlaubnis fehlt.
+
 ## Sicherung
 
 Der Vorrat liegt allein auf dem jeweiligen Gerät. Das ist Absicht — niemand
@@ -479,6 +507,7 @@ js/barcode.js       Kamera-Scan und Produktdatenbank
 js/search.js        Nachsichtige Suche und die Antwort "haben wir das?"
 js/categories.js    Fächer und die automatische Zuordnung nach Namen
 js/backup.js        Wann an eine Sicherung erinnert wird
+js/badge.js         Der Punkt auf dem App-Symbol
 js/format.js        Aufbereitung der Zahlen für die Anzeige
 js/app.js           Verdrahtung von Daten und Oberfläche
 vendor/zbar-wasm/   Barcode-Erkennung für iOS (LGPL, siehe Ordner-README)

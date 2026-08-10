@@ -8,6 +8,7 @@
 
 import { Store, LocalStorageAdapter, requestPersistence } from './storage.js';
 import { backupStatus, describeBackupAge, formatBytes, snoozeUntil } from './backup.js';
+import { applyBadge, askNotificationPermission, describeBadgeState, supportsBadge } from './badge.js';
 import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.js';
 import { BarcodeScanner, isScanSupported, lookupBarcode, stripBrand, suggestProduct } from './barcode.js';
 import { stockAnswer } from './search.js';
@@ -34,7 +35,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.12.0';
+export const APP_VERSION = '1.13.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -62,6 +63,7 @@ function render() {
   renderStats();
   renderBackup();
   renderBackfill();
+  syncAppBadge();
   // Die Detailansicht ist ein eigener Dialog, der über der Liste liegt.
   // Ohne diesen Aufruf zeigte sie nach einer Änderung weiter den Stand von
   // vor dem Öffnen -- man ändert eine Haltbarkeit und sieht das alte Datum.
@@ -515,6 +517,32 @@ function renderBackup() {
         ? 'Dein Vorrat liegt nur auf diesem Handy und ist noch nie gesichert worden. Geht das Gerät verloren, ist die Arbeit weg.'
         : `Zuletzt gesichert ${describeBackupAge(status.days)}. Der Vorrat liegt nur auf diesem Handy.`;
   }
+}
+
+/**
+ * Der Punkt auf dem App-Symbol.
+ *
+ * Läuft bei jeder Änderung mit, damit die Zahl in dem Augenblick stimmt, in
+ * dem die App zugeklappt wird -- länger kann sie ohnehin nicht stimmen.
+ */
+let lastBadge = null;
+
+async function syncAppBadge() {
+  const enabled = store.getSetting('badgeEnabled', false) === true;
+  const count = pantry.expiringSoon().length;
+
+  // Nicht bei jedem Neuzeichnen erneut ans System melden.
+  const key = `${enabled}:${count}`;
+  if (key === lastBadge) return;
+  lastBadge = key;
+
+  const result = await applyBadge(count, { enabled });
+  $('#badge-state').textContent = describeBadgeState({
+    enabled,
+    supported: supportsBadge(),
+    result,
+    count,
+  });
 }
 
 /**
@@ -1214,6 +1242,17 @@ function wire() {
     store.setSetting('expiryWarnDays', Math.max(0, Number(e.target.value) || 0));
   });
 
+  $('#setting-badge').addEventListener('change', async (e) => {
+    const wanted = e.target.checked;
+    // Fragen darf man nur, solange der Tipp der Nutzerin noch nachwirkt --
+    // hier, im Handler des Schalters, ist der richtige Augenblick.
+    if (wanted) await askNotificationPermission();
+    // Beim nächsten Durchlauf soll wirklich gesetzt werden, auch wenn Zahl
+    // und Schalterstellung sich sonst nicht geändert hätten.
+    lastBadge = null;
+    await store.setSetting('badgeEnabled', wanted);
+  });
+
   $('#btn-reset-forecasts').addEventListener('click', resetAllForecasts);
   $('#btn-backfill').addEventListener('click', backfillBrands);
   $('#btn-export').addEventListener('click', runBackup);
@@ -1240,10 +1279,26 @@ async function main() {
   $('#setting-expiry').value = String(
     store.getSetting('expiryWarnDays', DEFAULT_SETTINGS.expiryWarnDays),
   );
+  $('#setting-badge').checked = store.getSetting('badgeEnabled', false) === true;
+  $('#setting-badge').disabled = !supportsBadge();
 
   wire();
   switchView(activeView);
   render();
+
+  /*
+   * Beim Zuklappen noch einmal nachrechnen.
+   *
+   * Die Zahl auf dem Symbol bleibt genau so stehen, wie sie in diesem
+   * Augenblick war -- bis die App wieder geöffnet wird. Ist die letzte
+   * Buchung eine Minute her, wäre sonst der Stand von davor eingefroren.
+   */
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      lastBadge = null;
+      syncAppBadge();
+    }
+  });
 
   // Gleich beim Start, aber ohne den ersten Aufbau aufzuhalten: Der Browser
   // entscheidet still, und die Antwort steht danach unter "Mehr".
