@@ -155,6 +155,52 @@ Für Produkte, die vor dieser Fassung über einen Bon hereinkamen, erscheint
 unter **Mehr** die Karte **„Marken abtrennen"**. Sie zeigt, wie viele es
 betrifft und zwei Beispiele, und verschwindet, sobald nichts mehr offen ist.
 
+### Dasselbe Produkt auf zwei Wegen
+
+Ein Produkt kommt gescannt oder vom Bon herein, und beide Wege schreiben es
+anders:
+
+```
+gescannt:  Marke "Gut & Günstig"   Name "Frischkäse Natur 300g"
+vom Bon:   Marke "Gut&Günstig"     Name "Frischkäse Natur 300 g"
+```
+
+Fürs Auge dasselbe, für einen Zeichenvergleich zwei Dinge — und die Suche
+hilft hier nicht: Die ist fürs Tippen gebaut, verzeiht Tippfehler in einem
+kurzen Suchwort, nicht abweichende Schreibweisen in einem langen Namen. Ohne
+eigenen Vergleich entstand deshalb bei jedem Bon ein zweiter Eintrag
+derselben Sache.
+
+`js/dedupe.js` gibt jedem Produkt einen Schlüssel aus seinen Wörtern:
+vereinheitlicht, Zahl und Einheit getrennt (`300g` wird zu `300 g`),
+Füllwörter (`und`) weg, Einheiten vereinheitlicht (`gr` → `g`), sortiert.
+Gleiche Schlüssel heißen: dasselbe Produkt.
+
+Der Schlüssel ist bewusst streng. Die Größe bleibt darin, damit „Frischkäse
+300 g" und „Frischkäse 150 g" zwei Dinge bleiben — das sind sie im Schrank
+auch. Und ein Produkt ganz ohne Marke gilt nicht als dasselbe wie eines mit:
+Es könnte von jedem Hersteller sein. Lieber ein Doppel übersehen als zwei
+verschiedene Sachen zusammenwerfen — Ersteres sieht man und kann es beheben,
+Letzteres verdirbt stillschweigend den Bestand.
+
+Das greift an drei Stellen:
+
+- **Beim Bon-Einlesen** wird der Schlüssel vor der Suche geprüft. Ein
+  gescanntes Produkt wird dadurch sicher wiedergefunden.
+- **Beim Scannen** bekommt ein Produkt, das ohne Barcode im Vorrat steht
+  (also über einen Bon kam), den Barcode ergänzt, statt ein zweites Mal
+  angelegt zu werden. Ab dann wird es beim Scannen sofort gefunden.
+- **Für schon vorhandene Doppel** erscheint unter **Mehr** die Karte
+  **„Doppelte zusammenführen"**. Bestand, Buchungen und
+  Einkaufszettel-Einträge wandern auf den Eintrag mit Barcode — der ist die
+  bessere Kennung, weil man ihn durch erneutes Scannen wiederfindet. Fehlt
+  ein Barcode auf beiden Seiten, gewinnt der ältere Eintrag. Ergänzt wird nur,
+  wo etwas fehlt; nichts wird überschrieben, und der höhere Mindestbestand
+  gilt.
+
+Nach dem Zusammenführen rechnet die Prognose mit der gemeinsamen Geschichte —
+vorher hatte jede Hälfte nur ihre eigene.
+
 ### Warum nichts ungefragt gebucht wird
 
 Picnic liefert **keine Barcodes** mit, nur Bezeichnungen. Die App muss also
@@ -618,6 +664,7 @@ js/backup.js        Wann an eine Sicherung erinnert wird
 js/badge.js         Der Punkt auf dem App-Symbol
 js/receipt.js       Liest den Bon einer Picnic-Lieferung
 js/brands.js        Trennt bekannte Marken vom Produktnamen
+js/dedupe.js        Erkennt, wann zwei Einträge dasselbe Produkt meinen
 js/format.js        Aufbereitung der Zahlen für die Anzeige
 js/app.js           Verdrahtung von Daten und Oberfläche
 vendor/zbar-wasm/   Barcode-Erkennung für iOS (LGPL, siehe Ordner-README)

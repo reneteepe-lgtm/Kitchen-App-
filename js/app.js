@@ -14,6 +14,7 @@ import { BarcodeScanner, isScanSupported, lookupBarcode, stripBrand, suggestProd
 import { normalize, stockAnswer } from './search.js';
 import { parseReceipt, suggestedName } from './receipt.js';
 import { brandsInUse, splitBrand } from './brands.js';
+import { duplicateGroups, findTwin, mergedProduct } from './dedupe.js';
 import {
   CATEGORIES,
   categoriesInShoppingOrder,
@@ -37,7 +38,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.16.0';
+export const APP_VERSION = '1.17.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -66,6 +67,7 @@ function render() {
   renderBackup();
   renderBackfill();
   renderBrandSplit();
+  renderMerge();
   renderLastImport();
   syncAppBadge();
   // Die Detailansicht ist ein eigener Dialog, der über der Liste liegt.
@@ -950,6 +952,23 @@ async function handleScan(barcode, hint) {
   stopScan();
 
   const suggestion = suggestProduct(hit);
+
+  /*
+   * Steht dasselbe Produkt schon im Vorrat, nur ohne Barcode?
+   *
+   * Genau das passiert, wenn es über einen Bon hereinkam: Der Bon liefert
+   * keine Barcodes. Ohne diesen Griff entstünde beim Scannen ein zweiter
+   * Eintrag derselben Sache. Stattdessen bekommt der vorhandene den Barcode
+   * -- ab dann wird er beim Scannen sofort gefunden.
+   */
+  const twin = findTwin(pantry.products(), suggestion, (product) => !product.barcode);
+  if (twin) {
+    await pantry.updateProduct(twin, { barcode });
+    openStockDialog(twin, { fromScan: true });
+    toast(`Barcode zu „${twin.name}“ ergänzt`);
+    return;
+  }
+
   openProductDialog(null, { name: suggestion.name, brand: suggestion.brand, barcode });
   if (!hit) toast('Produkt nicht in der Datenbank — bitte Namen eintragen');
 }
@@ -1029,6 +1048,64 @@ async function splitBrands() {
   toast(`Bei ${plural(candidates.length, 'Produkt', 'Produkten')} die Marke abgetrennt`);
 }
 
+// --- Doppelte zusammenführen ----------------------------------------------
+
+function renderMerge() {
+  const groups = duplicateGroups(pantry.products());
+  $('#merge-card').hidden = groups.length === 0;
+  if (!groups.length) return;
+
+  const beispiele = groups
+    .slice(0, 2)
+    .map(([keep]) => `„${[keep.brand, keep.name].filter(Boolean).join(' ')}“`)
+    .join(', ');
+  $('#merge-info').textContent =
+    `${plural(groups.length, 'Produkt steht', 'Produkte stehen')} doppelt im Vorrat — ${beispiele}.`;
+}
+
+/**
+ * Führt doppelte Produkte zusammen.
+ *
+ * Nichts geht dabei verloren: Chargen, Buchungen und Einkaufszettel-Einträge
+ * werden auf den bleibenden Eintrag umgehängt, bevor der andere verschwindet.
+ * Der Bestand ist danach die Summe, und die Prognose rechnet mit der
+ * gemeinsamen Geschichte -- vorher hatte jede Hälfte nur ihre eigene.
+ */
+async function mergeDuplicates() {
+  const groups = duplicateGroups(pantry.products());
+  if (!groups.length) return;
+
+  const mapping = { ...store.getSetting('receiptMap', {}) };
+  const writes = [];
+  const wegfallen = [];
+
+  for (const [keep, ...others] of groups) {
+    const ids = others.map((product) => product.id);
+    wegfallen.push(...ids);
+
+    for (const lot of pantry.lots()) {
+      if (ids.includes(lot.productId)) writes.push(['lots', { ...lot, productId: keep.id }]);
+    }
+    for (const event of pantry.events()) {
+      if (ids.includes(event.productId)) writes.push(['events', { ...event, productId: keep.id }]);
+    }
+    for (const wish of store.all('wishes')) {
+      if (ids.includes(wish.productId)) writes.push(['wishes', { ...wish, productId: keep.id }]);
+    }
+    writes.push(['products', mergedProduct(keep, others)]);
+
+    // Gemerkte Bon-Zuordnungen dürfen nicht ins Leere zeigen.
+    for (const [text, productId] of Object.entries(mapping)) {
+      if (ids.includes(productId)) mapping[text] = keep.id;
+    }
+  }
+
+  await store.putMany(writes);
+  for (const id of wegfallen) await store.remove('products', id);
+  await store.setSetting('receiptMap', mapping);
+  toast(`${plural(groups.length, 'Produkt', 'Produkte')} zusammengeführt`);
+}
+
 function renderBackfill() {
   const candidates = backfillCandidates();
   $('#backfill-card').hidden = candidates.length === 0;
@@ -1098,6 +1175,20 @@ function matchReceiptItem(item, mapping) {
   const key = normalize(item.name);
   const remembered = mapping[key];
   if (remembered && pantry.product(remembered)) return { productId: remembered, sure: true };
+
+  /*
+   * Zuerst der Wortvergleich, erst danach die Suche.
+   *
+   * Dasselbe Produkt schreibt sich auf zwei Wegen verschieden -- gescannt
+   * "Frischkäse Natur 300g" mit Marke "Gut & Günstig", vom Bon
+   * "Gut&Günstig Frischkäse Natur 300 g". Die Suche findet das nicht: Sie
+   * verzeiht Tippfehler in einem kurzen Suchwort, nicht abweichende
+   * Schreibweisen in einem langen Namen. Ohne diesen Schritt entstand bei
+   * jedem Bon ein zweiter Eintrag derselben Sache.
+   */
+  const geteilt = splitBrand(suggestedName(item), brandsInUse(pantry.products()));
+  const twin = findTwin(pantry.products(), geteilt);
+  if (twin) return { productId: twin.id, sure: true };
 
   const [best] = pantry.search(suggestedName(item));
   const fallback = best ?? pantry.search(item.name)[0];
@@ -1592,6 +1683,7 @@ function wire() {
   $('#btn-reset-forecasts').addEventListener('click', resetAllForecasts);
   $('#btn-backfill').addEventListener('click', backfillBrands);
   $('#btn-split').addEventListener('click', splitBrands);
+  $('#btn-merge').addEventListener('click', mergeDuplicates);
   $('#btn-export').addEventListener('click', runBackup);
   $('#backup-now').addEventListener('click', runBackup);
   $('#backup-later').addEventListener('click', async () => {
