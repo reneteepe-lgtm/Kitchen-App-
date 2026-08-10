@@ -318,6 +318,43 @@ Es genügt also, in `js/storage.js` einen weiteren Adapter neben
 `LocalStorageAdapter` zu stellen (`read`/`write` gegen eine Datenbank). An der
 übrigen Anwendungslogik ändert sich dafür nichts.
 
+## Haltbarkeit schätzen
+
+Bei zwanzig Artikeln je Lieferung ist es Arbeit, jedes Mindesthaltbarkeits-
+datum abzutippen — und dann bleibt das Feld eben leer, und die Ablauf-Warnung,
+für die es gebaut wurde, läuft ins Leere. Ein geschätztes Datum ist besser als
+gar keins: Für die Frage „was sollte ich zuerst aufbrauchen?" reicht eine
+grobe Ordnung völlig.
+
+Geschätzt wird aus drei Quellen, in dieser Reihenfolge (`js/shelflife.js`):
+
+1. **Was für dieses Produkt gelernt wurde.** Wer beim Joghurt einmal ein
+   echtes Datum einträgt, legt damit fest, wie lange er sich hält — beim
+   nächsten Kauf gilt das statt jeder Faustregel.
+2. **Ein Stichwort im Namen.** „H-Milch" hält Monate, „frische Vollmilch" eine
+   Woche. Beide stehen im selben Fach, deshalb genügt das Fach hier nicht.
+3. **Das Fach.** Konserven Jahre, Tiefkühl Monate, Obst und Gemüse Tage.
+
+Unter den Stichwörtern gewinnt nicht der erste Treffer, sondern der beste: In
+einem deutschen Wort steht hinten, worum es geht. „Kartoffelsalat" ist ein
+Salat und hält vier Tage, keine Kartoffel mit sechs Wochen. Ein Stamm am
+Wortende schlägt deshalb einen am Wortanfang. Kurze Stämme greifen nur als
+ganzes Wort — sonst endete „Kartoffelbrei" auf „ei" und hielte drei Wochen.
+
+Gerechnet wird ab dem **Kaufdatum**, beim Bon also ab dem Lieferdatum und
+nicht ab dem Tag, an dem er eingelesen wird.
+
+**Ein geschätztes Datum sieht nie aus wie ein abgelesenes.** In der Liste
+steht eine Tilde (`MHD ~ noch 5 Tage`), in der Detailansicht „(geschätzt)",
+und die Prüfliste beim Bon zeigt es schon vor dem Buchen — mit Jahr, damit
+ein Datum in zwei Jahren nicht wie der Liefertag aussieht.
+
+Wer das Datum von der Packung abliest und einträgt, überschreibt die
+Schätzung; die App merkt sich daraus die Haltbarkeit für dieses Produkt. Aus
+einer Schätzung lernt sie dagegen **nicht** — das verfestigte bloß den ersten
+Fehlgriff. Für Warengruppen ohne sinnvolles Datum (Haushalt, Sonstiges) wird
+gar nichts geschätzt, und unter **Mehr** lässt sich das Ganze abschalten.
+
 ## Wann etwas auf die Einkaufsliste kommt
 
 Drei Gründe, in dieser Reihenfolge:
@@ -694,6 +731,7 @@ js/badge.js         Der Punkt auf dem App-Symbol
 js/receipt.js       Liest den Bon einer Picnic-Lieferung
 js/brands.js        Trennt bekannte Marken vom Produktnamen
 js/dedupe.js        Erkennt, wann zwei Einträge dasselbe Produkt meinen
+js/shelflife.js     Schätzt die Haltbarkeit aus Erfahrungswerten
 js/format.js        Aufbereitung der Zahlen für die Anzeige
 js/app.js           Verdrahtung von Daten und Oberfläche
 vendor/zbar-wasm/   Barcode-Erkennung für iOS (LGPL, siehe Ordner-README)

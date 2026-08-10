@@ -233,8 +233,8 @@ export class Pantry {
   }
 
   /** Einkauf einbuchen: eine neue Charge anlegen. */
-  async addStock(productId, qty, bestBefore = null) {
-    const [lot] = await this.addStockBatches(productId, [{ qty, bestBefore }]);
+  async addStock(productId, qty, bestBefore = null, estimated = false) {
+    const [lot] = await this.addStockBatches(productId, [{ qty, bestBefore, estimated }]);
     return lot;
   }
 
@@ -260,15 +260,21 @@ export class Pantry {
     // Gleiche Daten zusammenfassen: Wer dreimal dasselbe Datum einträgt,
     // will eine Charge zu drei Stück, nicht drei Zeilen im Schrank.
     const byDate = new Map();
+    const estimated = new Set();
     for (const batch of batches ?? []) {
       const amount = Math.max(0, Math.round(Number(batch?.qty) || 0));
       if (amount <= 0) continue;
       const key = batch?.bestBefore || '';
       byDate.set(key, (byDate.get(key) ?? 0) + amount);
+      if (key && batch?.estimated) estimated.add(key);
     }
 
     for (const [bestBefore, qty] of byDate) {
-      lots.push({ id: newId('l'), productId, qty, bestBefore: bestBefore || null, addedAt: now });
+      const lot = { id: newId('l'), productId, qty, bestBefore: bestBefore || null, addedAt: now };
+      // Geschätzte Daten werden gekennzeichnet: In der Anzeige sollen sie
+      // nie so aussehen, als stünden sie auf der Packung.
+      if (bestBefore && estimated.has(bestBefore)) lot.estimated = true;
+      lots.push(lot);
     }
     if (!lots.length) return [];
 
@@ -297,7 +303,9 @@ export class Pantry {
     const lot = this.store.byId('lots', lotId);
     if (!lot) return null;
     this.#snapshot([lot.id], [], 'Haltbarkeit geändert');
-    return this.store.put('lots', { ...lot, bestBefore: bestBefore || null });
+    // Von Hand eingetragen ist keine Schätzung mehr -- der Vermerk muss weg,
+    // sonst stünde weiter "geschätzt" an einem abgelesenen Datum.
+    return this.store.put('lots', { ...lot, bestBefore: bestBefore || null, estimated: false });
   }
 
   /**

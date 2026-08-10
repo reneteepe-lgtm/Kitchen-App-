@@ -141,6 +141,18 @@
             </span>
           </label>
           <p id="badge-state" class="field-hint"></p>
+
+          <label class="switch">
+            <input id="setting-estimate" type="checkbox" checked />
+            <span>
+              Haltbarkeit schätzen
+              <span class="field-hint">
+                Trägt beim Einbuchen ein ungefähres Mindesthaltbarkeitsdatum ein — aus dem
+                Kaufdatum und Erfahrungswerten für die Warengruppe. Geschätzte Daten sind
+                als solche gekennzeichnet und jederzeit überschreibbar.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div class="card">
@@ -345,6 +357,10 @@
           <span>Mindestens haltbar bis</span>
           <span class="field-hint">Leer lassen, wenn es keins gibt oder egal ist.</span>
           <input id="stock-bb" type="date" />
+          <span id="stock-bb-hint" class="field-hint" hidden>
+            Geschätzt aus Erfahrungswerten. Steht ein Datum auf der Packung, trag es ein —
+            die App merkt es sich dann für dieses Produkt.
+          </span>
         </label>
 
         <label class="switch" id="stock-split-row" hidden>

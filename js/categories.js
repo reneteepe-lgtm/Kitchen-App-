@@ -136,7 +136,7 @@ export const CATEGORIES = [
       'beere', 'beeren', 'traube', 'melone', 'pfirsich', 'kiwi', 'obst',
       'ananas', 'mango', 'pflaume', 'kirsch', 'dattel', 'feige',
       'tomate', 'gurke', 'salat', 'zwiebel', 'moehre', 'karotte', 'paprika',
-      'zucchini', 'aubergine', 'brokkoli', 'blumenkohl', 'spinat', 'kohl',
+      'zucchini', 'aubergine', 'brokkoli', 'broccoli', 'blumenkohl', 'spinat', 'kohl',
       'lauch', 'sellerie', 'pilz', 'champignon', 'gemuese', 'avocado',
       'mais', 'spargel', 'kuerbis', 'radieschen', 'rettich', 'fenchel', 'rucola',
     ],

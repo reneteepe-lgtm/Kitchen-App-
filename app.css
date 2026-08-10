@@ -793,6 +793,12 @@ main {
   font-weight: 600;
 }
 
+/* Das geschätzte Haltbarkeitsdatum in der Prüfliste -- eine Nebenangabe. */
+.receipt-bb {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
 .receipt-qty {
   color: var(--text-dim);
   font-weight: 400;

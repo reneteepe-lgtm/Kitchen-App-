@@ -15,6 +15,7 @@ import { normalize, stockAnswer } from './search.js';
 import { parseReceipt, suggestedName } from './receipt.js';
 import { brandsInUse, splitBrand } from './brands.js';
 import { duplicateGroups, findTwin, mergedProduct } from './dedupe.js';
+import { estimateBestBefore, learnShelfLife } from './shelflife.js';
 import {
   CATEGORIES,
   categoriesInShoppingOrder,
@@ -38,7 +39,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.18.0';
+export const APP_VERSION = '1.19.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -101,7 +102,8 @@ function pantryRow(assessment) {
   const expiry = assessment.expiry;
   const parts = [forecast.text];
   if (expiry && expiry.days <= pantry.settings.expiryWarnDays) {
-    parts.push(`MHD ${relativeDays(expiry.days)}`);
+    // Die Tilde sagt: geschätzt, nicht von der Packung abgelesen.
+    parts.push(`MHD ${expiry.lot?.estimated ? '~ ' : ''}${relativeDays(expiry.days)}`);
   }
   main.appendChild(el('span', `item-note tone-${forecast.tone}`, parts.join(' · ')));
   main.addEventListener('click', () => openDetail(product.id));
@@ -431,7 +433,7 @@ function renderExpiry() {
         el(
           'span',
           `item-note tone-${days < 0 ? 'urgent' : days <= 2 ? 'urgent' : 'soon'}`,
-          `${relativeDays(days)} · ${formatDateLong(lot.bestBefore)}`,
+          `${relativeDays(days)} · ${lot.estimated ? '~ ' : ''}${formatDateLong(lot.bestBefore)}`,
         ),
       );
       main.addEventListener('click', () => openDetail(product.id));
@@ -663,7 +665,9 @@ function renderDetail(productId) {
         el(
           'span',
           'lot-date',
-          lot.bestBefore ? `bis ${formatDateLong(lot.bestBefore)}` : 'ohne Datum',
+          lot.bestBefore
+            ? `bis ${formatDateLong(lot.bestBefore)}${lot.estimated ? ' (geschätzt)' : ''}`
+            : 'ohne Datum',
         ),
       );
       row.addEventListener('click', () => openLotDialog(product, lot));
@@ -802,7 +806,8 @@ function openLotDialog(product, lot) {
   lotTarget = lot;
   $('#lot-title').textContent = product.name;
   $('#lot-info').textContent = lot.bestBefore
-    ? `${plural(lot.qty, 'Packung', 'Packungen')}, haltbar bis ${formatDateLong(lot.bestBefore)}`
+    ? `${plural(lot.qty, 'Packung', 'Packungen')}, haltbar bis ${formatDateLong(lot.bestBefore)}` +
+      (lot.estimated ? ' (geschätzt)' : '')
     : `${plural(lot.qty, 'Packung', 'Packungen')} ohne Haltbarkeitsdatum`;
   $('#lot-bb').value = lot.bestBefore ?? '';
   // Aufteilen ergibt nur Sinn, wenn mehr als eine Packung in der Charge ist.
@@ -824,7 +829,11 @@ function openStockDialog(product, { fromScan = false, wishId = null, qty = 1 } =
   stockWishId = wishId;
   $('#stock-title').textContent = `${product.name} einbuchen`;
   $('#stock-qty').value = String(Math.max(1, Number(qty) || 1));
-  $('#stock-bb').value = '';
+  // Vorbelegt, nicht festgelegt: Wer das Datum von der Packung abliest,
+  // überschreibt es -- und genau daraus lernt die App dann.
+  const geschaetzt = guessBestBefore(product);
+  $('#stock-bb').value = geschaetzt ?? '';
+  $('#stock-bb-hint').hidden = !geschaetzt;
   $('#stock-split').checked = false;
   $('#stock-again-row').hidden = !fromScan;
   syncStockDialog();
@@ -864,6 +873,38 @@ function syncStockDialog() {
   }
 }
 
+/**
+ * Das geschätzte Haltbarkeitsdatum für ein Produkt.
+ *
+ * Was für dieses Produkt gelernt wurde, schlägt jede Faustregel: Wer einmal
+ * ein echtes Datum eingetragen hat, hat damit gesagt, wie lange es hält.
+ *
+ * @returns {string|null} null, wenn abgeschaltet oder nichts zu schätzen ist
+ */
+function guessBestBefore(product, from = new Date()) {
+  if (store.getSetting('estimateExpiry', true) === false) return null;
+  if (!product) return null;
+  return estimateBestBefore({
+    text: `${product.brand ?? ''} ${product.name ?? ''}`,
+    categoryId: categoryOf(product).id,
+    learned: product.shelfLifeDays ?? null,
+    from,
+  });
+}
+
+/**
+ * Merkt sich, wie lange dieses Produkt hält.
+ *
+ * Nur bei einem von Hand eingetragenen Datum -- eine Schätzung von sich
+ * selbst lernen zu lassen, verfestigte bloß den ersten Fehlgriff.
+ */
+async function rememberShelfLife(product, bestBefore) {
+  if (!product || !bestBefore) return;
+  const days = learnShelfLife(bestBefore);
+  if (!days || product.shelfLifeDays === days) return;
+  await pantry.updateProduct(pantry.product(product.id) ?? product, { shelfLifeDays: days });
+}
+
 /** Liest aus dem Dialog, was einzubuchen ist. */
 function stockDialogBatches() {
   const qty = Math.max(1, Math.round(Number($('#stock-qty').value) || 1));
@@ -881,6 +922,15 @@ async function submitStockDialog() {
   const product = stockTarget;
   const batches = stockDialogBatches();
   const total = batches.reduce((sum, b) => sum + b.qty, 0);
+
+  // Steht dort noch genau der Vorschlag, war es eine Schätzung. Was
+  // abgeändert wurde, ist abgelesen -- und daraus wird gelernt.
+  const vorschlag = guessBestBefore(product);
+  for (const batch of batches) {
+    batch.estimated = Boolean(batch.bestBefore) && batch.bestBefore === vorschlag;
+  }
+  const eigenes = batches.find((b) => b.bestBefore && !b.estimated);
+  if (eigenes) await rememberShelfLife(product, eigenes.bestBefore);
 
   await pantry.addStockBatches(product.id, batches);
   // Gekauft und eingeräumt: Der Eintrag auf der Einkaufsliste hat sich erledigt.
@@ -1267,9 +1317,32 @@ function receiptRow(entry, index) {
     target.classList.toggle('is-new', !entry.productId);
   });
 
+  // Was die App an Haltbarkeit annimmt, gehört vor das Buchen -- sonst
+  // merkt man einen Fehlgriff erst, wenn die Warnung zu früh oder zu spät
+  // kommt.
+  const bis = receiptBestBefore(entry);
+  // Mit Jahr: "MHD ~ 5.8." sähe bei einem Datum in zwei Jahren aus wie
+  // der Liefertag selbst.
+  if (bis) label.appendChild(el('span', 'receipt-bb', ` · MHD ~ ${formatDateLong(bis)}`));
+
   row.classList.toggle('is-off', !entry.take);
   row.append(take, label, target);
   return row;
+}
+
+/**
+ * Das geschätzte Haltbarkeitsdatum einer Bon-Zeile.
+ *
+ * Für ein schon vorhandenes Produkt zählt, was dafür gelernt wurde; für ein
+ * neues muss die Schätzung aus Name und Fach kommen, das Produkt gibt es ja
+ * noch nicht.
+ */
+function receiptBestBefore(entry) {
+  const from = receiptDraft?.bon?.date ? new Date(receiptDraft.bon.date) : new Date();
+  const vorhanden = entry.productId ? pantry.product(entry.productId) : null;
+  if (vorhanden) return guessBestBefore(vorhanden, from);
+  const geteilt = splitBrand(suggestedName(entry.item), brandsInUse(pantry.products()));
+  return guessBestBefore({ name: geteilt.name, brand: geteilt.brand }, from);
 }
 
 /**
@@ -1366,7 +1439,11 @@ async function bookReceipt() {
       spur.products.push(product.id);
       angelegt++;
     }
-    const lots = await pantry.addStock(productId, entry.item.qty);
+    // Ab dem Lieferdatum gerechnet, nicht ab heute: Wer den Bon erst drei
+    // Tage später einliest, bekommt sonst drei Tage geschenkt.
+    const product = pantry.product(productId);
+    const bestBefore = guessBestBefore(product, bon.date ? new Date(bon.date) : new Date());
+    const lots = await pantry.addStock(productId, entry.item.qty, bestBefore, Boolean(bestBefore));
     const lot = Array.isArray(lots) ? lots[0] : lots;
     if (lot) {
       spur.lots.push(lot.id);
@@ -1685,6 +1762,10 @@ function wire() {
     store.setSetting('expiryWarnDays', Math.max(0, Number(e.target.value) || 0));
   });
 
+  $('#setting-estimate').addEventListener('change', (e) => {
+    store.setSetting('estimateExpiry', e.target.checked);
+  });
+
   $('#setting-badge').addEventListener('change', async (e) => {
     const wanted = e.target.checked;
     // Fragen darf man nur, solange der Tipp der Nutzerin noch nachwirkt --
@@ -1739,6 +1820,7 @@ async function main() {
   $('#setting-expiry').value = String(
     store.getSetting('expiryWarnDays', DEFAULT_SETTINGS.expiryWarnDays),
   );
+  $('#setting-estimate').checked = store.getSetting('estimateExpiry', true) !== false;
   $('#setting-badge').checked = store.getSetting('badgeEnabled', false) === true;
   $('#setting-badge').disabled = !supportsBadge();
 
