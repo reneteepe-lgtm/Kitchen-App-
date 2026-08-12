@@ -86,10 +86,10 @@ der beiden Versionsangaben.
 
 ## Bon einlesen
 
-Wer online bestellt, will die Lieferung nicht von Hand abtippen. Unter
-**Mehr → Bon einlesen** lässt sich die Bon-E-Mail einer
-[Picnic](https://picnic.app)-Lieferung einfügen: kopieren, einfügen,
-durchsehen, einbuchen.
+Einen Einkauf will niemand von Hand abtippen. Unter **Mehr → Bon einlesen**
+gehen zwei Wege: die Bon-E-Mail einer [Picnic](https://picnic.app)-Lieferung,
+und der abfotografierte Kassenzettel aus dem Laden. Beide Male dasselbe:
+kopieren, einfügen, durchsehen, einbuchen.
 
 Bewusst über die E-Mail und nicht über eine Schnittstelle. Picnic hat keine
 offene Schnittstelle; die nachgebauten Zugänge verlangen die Zugangsdaten des
@@ -124,6 +124,75 @@ ein Artikel und werden deshalb ausdrücklich ausgeschlossen.
 Die Größe wandert in den Namen: `Broccoli 500 g`. Denn „Frischkäse 300 g" und
 „Frischkäse 150 g" sind zwei verschiedene Dinge im Schrank. Nur „1 Stück"
 bleibt weg — das sagt nichts über die Packung.
+
+### Der Kassenzettel aus dem Laden
+
+Nicht jeder Einkauf kommt geliefert. Der Zettel vom Edeka lässt sich
+abfotografieren; die Texterkennung des iPhones („Text auswählen" im Foto)
+macht daraus Text, und der wird in dasselbe Feld eingefügt. Welcher Bon
+vorliegt, erkennt die App am Text selbst — ein eigener Leser, dieselbe
+Prüfliste.
+
+Absichtlich **ohne** eingebaute Texterkennung: Eine mitgelieferte OCR
+(Tesseract als WebAssembly) wären fünf bis acht Megabyte, die bei jedem
+Aufruf im Speicher landen, und sie liest deutsche Kassenzettel schlechter als
+das, was auf dem Telefon ohnehin schon eingebaut ist.
+
+Was dabei ankommt, sieht anders aus als eine E-Mail — die Erkennung liest den
+Bon **spaltenweise**, erst alle Bezeichnungen, dann den ganzen Preisblock:
+
+```
+Herz.M.Pf1. Tomaten Herz. Avocados     ← zwei Artikel in einer Zeile
+G&G Tomaten pass.                      ← abgekürzt, die Zeile hat 14 Zeichen
+Bresso Balanc 2,39 € x 2               ← die Anzahl hängt am Preis
+Gerv. Hüttenkä 1,99 € x
+2                                      ← … und ist manchmal umgebrochen
+Rückstellnummer: 0083147
+Posten: 23
+SUMME
+66586698的686紀99655                    ← der Preisblock, unbrauchbar
+```
+
+Daraus folgt der Zuschnitt:
+
+- **Preise werden nicht gelesen.** Sie stehen in einer eigenen Spalte, die
+  regelmäßig zu Zeichensalat zerfällt, und für den Vorrat zählen sie nicht.
+  Was nicht auf einen deutschen Kassenbon gehört, fliegt raus: Eine Zeile mit
+  einem einzigen fremden Zeichen ist Zeichensalat, und das erkennt sich
+  zuverlässiger als über jede Wortliste.
+- **Die Anzahl schon**, denn `€ x 2` steht mitten in der Namensspalte.
+- **„Posten: 23" ist die Probe.** Der Bon zählt seine Packungen selbst.
+  Stimmt das mit dem Gelesenen überein, sagt die App „vollständig"; stimmt es
+  nicht, sagt sie, wie viel fehlt — statt stillschweigend einen halben
+  Einkauf einzubuchen. Ohne diese Probe merkt man eine verschluckte Zeile
+  erst Wochen später an einer Prognose, die nicht stimmt.
+
+**Zwei Artikel in einer Zeile** sind der eigentliche Ärger. Getrennt wird nur
+an einem belegbaren Anhaltspunkt: einer bekannten Marke oder einer Abkürzung
+mit Punkt (`Herz.`, `Exqu.`) — beides steht auf einem Kassenbon am Anfang
+eines Artikels und nirgends sonst. Zusätzlich muss links wie rechts der
+Schnittstelle mindestens ein Wortpaar übrig bleiben, sonst stünde `Exqu.`
+allein als Produkt im Vorrat. Findet sich kein Anhaltspunkt, bleibt die Zeile
+ganz: Ein zu langer Name fällt beim Durchsehen auf, zwei falsch
+zerschnittene Namen sind Unsinn im Vorrat.
+
+**Abkürzungen** werden aufgelöst, soweit sie eindeutig sind: `G&G Frischk.`
+wird zu `Gut&Günstig Frischkäse`. Das ist nicht nur schöner — die App erkennt
+an `Frischk.` weder das Fach noch die Haltbarkeit. Was unklar ist, bleibt
+stehen (`Herz.M.Pf1. Tomaten`); sobald diese Zeile einmal einem Produkt
+zugeordnet wurde, merkt die App sich das und sie läuft beim nächsten Einkauf
+durch.
+
+Der Kassenzettel nennt **keine Packungsgröße** — dafür ist auf vierzehn
+Zeichen kein Platz. Gescannt heißt dieselbe Milch aber `Weidemilch 1 L`. Nur
+wenn der Bon selbst keine Größe nennt, wird deshalb auch ohne sie verglichen,
+und nur bei genau einem Treffer: Stehen `Weidemilch 1 L` und
+`Weidemilch 500 ml` im Vorrat, kann niemand wissen, welche gemeint war.
+
+Ein letzter Riegel: Der Kassenbon-Leser hält jede Zeile mit ein paar
+Buchstaben für einen möglichen Artikel. Er kommt deshalb nur zum Zug, wenn
+der Text sich auch wie ein Bon liest — mit Beträgen, mit „Posten", mit einem
+Fußteil. Sonst machte ein versehentlich eingefügter Satz ein Produkt daraus.
 
 ### Die Marke aus dem Namen lösen
 
@@ -739,6 +808,7 @@ js/categories.js    Fächer und die automatische Zuordnung nach Namen
 js/backup.js        Wann an eine Sicherung erinnert wird
 js/badge.js         Der Punkt auf dem App-Symbol
 js/receipt.js       Liest den Bon einer Picnic-Lieferung
+js/tillreceipt.js   Liest den abfotografierten Kassenzettel aus dem Laden
 js/brands.js        Trennt bekannte Marken vom Produktnamen
 js/dedupe.js        Erkennt, wann zwei Einträge dasselbe Produkt meinen
 js/shelflife.js     Schätzt die Haltbarkeit aus Erfahrungswerten

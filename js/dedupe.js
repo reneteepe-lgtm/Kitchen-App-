@@ -94,6 +94,55 @@ export function findTwin(products, candidate, accept = () => true) {
   return (products ?? []).find((product) => accept(product) && productKey(product) === key);
 }
 
+/** Wörter, die eine Größe angeben. */
+const UNIT_WORDS = new Set([
+  'g', 'kg', 'mg', 'ml', 'cl', 'l', 'stueck', 'packung', 'beutel', 'bund', 'rolle', 'paar', 'dose',
+]);
+
+/** "Weidemilch 1 l" -> ["weidemilch"] */
+function withoutSize(words) {
+  const rest = [];
+  for (let i = 0; i < words.length; i++) {
+    if (/^\d+$/.test(words[i])) {
+      // Eine Zahl -- die Einheit dahinter gehört dazu und geht mit.
+      if (UNIT_WORDS.has(words[i + 1])) i++;
+      continue;
+    }
+    if (UNIT_WORDS.has(words[i])) continue;
+    rest.push(words[i]);
+  }
+  return rest;
+}
+
+/**
+ * Sucht dasselbe Produkt, wenn der Bon gar keine Größe nennt.
+ *
+ * Der Kassenzettel aus dem Laden druckt "Hansano Weidemilch" -- vierzehn
+ * Zeichen, für eine Packungsgröße ist da kein Platz. Gescannt heißt dasselbe
+ * Ding "Weidemilch 1 L". Der strenge Vergleich kann die beiden nicht
+ * zusammenbringen, und ohne diesen Weg entstünde bei jedem Kassenbon neben
+ * jedem gescannten Produkt ein zweites.
+ *
+ * Zwei Vorsichtsmaßnahmen halten das im Rahmen:
+ *
+ *  1. Nur wenn der Bon **selbst keine Größe nennt**. Steht dort "300 g", ist
+ *     das eine Aussage, und "150 g" ist dann eben etwas anderes.
+ *  2. Nur bei **genau einem** Treffer. Stehen "Weidemilch 1 L" und
+ *     "Weidemilch 500 ml" im Vorrat, kann niemand wissen, welche gemeint war
+ *     -- dann wird lieber neu angelegt und man sieht es.
+ */
+export function findSizeless(products, candidate) {
+  const words = productTokens(`${candidate?.brand ?? ''} ${candidate?.name ?? ''}`);
+  if (!words.length || words.length !== withoutSize(words).length) return undefined;
+
+  const key = [...new Set(words)].sort().join(' ');
+  const hits = (products ?? []).filter((product) => {
+    const other = withoutSize(productTokens(`${product?.brand ?? ''} ${product?.name ?? ''}`));
+    return [...new Set(other)].sort().join(' ') === key;
+  });
+  return hits.length === 1 ? hits[0] : undefined;
+}
+
 /**
  * Gruppen von Produkten, die dasselbe meinen.
  *

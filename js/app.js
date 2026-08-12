@@ -12,9 +12,9 @@ import { applyBadge, askNotificationPermission, describeBadgeState, supportsBadg
 import { Pantry, DEFAULT_SETTINGS, stockOf, lotsFor, daysUntil } from './model.js';
 import { BarcodeScanner, isScanSupported, lookupBarcode, stripBrand, suggestProduct } from './barcode.js';
 import { normalize, stockAnswer } from './search.js';
-import { parseReceipt, suggestedName } from './receipt.js';
+import { readReceipt, suggestedName } from './receipt.js';
 import { brandsInUse, splitBrand } from './brands.js';
-import { duplicateGroups, findTwin, mergedProduct } from './dedupe.js';
+import { duplicateGroups, findSizeless, findTwin, mergedProduct } from './dedupe.js';
 import { estimateBestBefore, learnShelfLife } from './shelflife.js';
 import {
   CATEGORIES,
@@ -39,7 +39,7 @@ import {
  * in `sw.js` mitziehen. Wird unter "Mehr" angezeigt, damit auf dem Handy
  * nachprüfbar ist, welcher Stand gerade läuft.
  */
-export const APP_VERSION = '1.19.1';
+export const APP_VERSION = '1.20.0';
 
 const $ = (sel) => document.querySelector(sel);
 const el = (tag, className, text) => {
@@ -1299,6 +1299,12 @@ function matchReceiptItem(item, mapping) {
   const twin = findTwin(pantry.products(), geteilt);
   if (twin) return { productId: twin.id, sure: true };
 
+  // Der Kassenzettel nennt keine Größe -- "Hansano Weidemilch" gegen das
+  // gescannte "Weidemilch 1 L". Nur bei genau einem Treffer, sonst wäre es
+  // geraten.
+  const ohneGroesse = findSizeless(pantry.products(), geteilt);
+  if (ohneGroesse) return { productId: ohneGroesse.id, sure: true };
+
   const [best] = pantry.search(suggestedName(item));
   const fallback = best ?? pantry.search(item.name)[0];
   if (fallback && fallback.score >= RECEIPT_MATCH) {
@@ -1394,13 +1400,45 @@ function updateReceiptButton() {
     : `${plural(packungen, 'Packung', 'Packungen')} einbuchen`;
 }
 
+/**
+ * Was der Bon selbst über seine Vollständigkeit sagt.
+ *
+ * Der Kassenzettel druckt "Posten: 23" -- er zählt seine Packungen also
+ * selbst. Beim abfotografierten Bon ist das die einzige Möglichkeit zu
+ * merken, dass die Texterkennung eine Zeile verschluckt oder zwei
+ * zusammengezogen hat. Ohne diese Probe bucht man einen halben Einkauf ein
+ * und merkt es erst Wochen später an einer Prognose, die nicht stimmt.
+ */
+function receiptCheck(bon, entries) {
+  if (!bon.posten) return null;
+  const gelesen = entries.reduce((sum, e) => sum + e.item.qty, 0);
+  if (gelesen === bon.posten) {
+    return { ok: true, text: `${bon.posten} Posten laut Bon, ${gelesen} gelesen — vollständig.` };
+  }
+  const fehlt = bon.posten - gelesen;
+  return {
+    ok: false,
+    text:
+      fehlt > 0
+        ? `Der Bon nennt ${bon.posten} Posten, gelesen habe ich ${gelesen}. ` +
+          `${plural(fehlt, 'Packung fehlt', 'Packungen fehlen')} — auf dem Foto sind ` +
+          'wahrscheinlich zwei Artikel in einer Zeile gelandet. Bitte durchsehen.'
+        : `Der Bon nennt ${bon.posten} Posten, gelesen habe ich ${gelesen} — ` +
+          'also zu viele. Vermutlich ist eine Zeile doppelt erkannt worden. Bitte durchsehen.',
+  };
+}
+
 function openReceipt(text) {
-  const bon = parseReceipt(text);
+  // Die Marken aus dem eigenen Vorrat helfen dem Kassenbon-Leser, zwei in
+  // einer Zeile zusammengerutschte Artikel auseinanderzuhalten.
+  const bon = readReceipt(text, { brands: brandsInUse(pantry.products()) });
   const hint = $('#receipt-hint');
 
   if (!bon.items.length) {
     hint.textContent =
-      'Daraus konnte ich keine Artikel lesen. Ist der ganze Bon kopiert — von „Dein Bon“ bis unten?';
+      'Daraus konnte ich keine Artikel lesen. Beim Picnic-Bon muss die ganze E-Mail ' +
+      'kopiert sein — von „Dein Bon“ bis unten. Beim Kassenzettel der Text aus dem Foto, ' +
+      'am besten mitsamt der Zeile „Posten“.';
     hint.classList.add('is-warn');
     return;
   }
@@ -1415,16 +1453,19 @@ function openReceipt(text) {
   }));
   receiptDraft = { bon, entries };
 
+  const wortFuerBon = bon.kind === 'till' ? 'Einkauf' : 'Lieferung';
   $('#receipt-title').textContent = bon.date
-    ? `Lieferung vom ${formatDateLong(bon.date)}`
+    ? `${wortFuerBon} vom ${formatDateLong(bon.date)}`
     : 'Bon einlesen';
 
   const known = bon.orderNo && seen.includes(bon.orderNo);
   const neue = entries.filter((e) => !e.productId).length;
+  const probe = receiptCheck(bon, entries);
   $('#receipt-note').textContent = known
     ? 'Diesen Bon hast du schon einmal eingebucht — noch einmal, und alles zählt doppelt.'
-    : `${plural(entries.length, 'Artikel', 'Artikel')}, davon ${neue} noch nicht im Vorrat. Bitte kurz durchsehen.`;
-  $('#receipt-note').classList.toggle('is-warn', known);
+    : `${plural(entries.length, 'Artikel', 'Artikel')}, davon ${neue} noch nicht im Vorrat. ` +
+      (probe ? probe.text : 'Bitte kurz durchsehen.');
+  $('#receipt-note').classList.toggle('is-warn', Boolean(known) || probe?.ok === false);
 
   $('#receipt-list').replaceChildren(...entries.map(receiptRow));
   updateReceiptButton();
@@ -1449,6 +1490,7 @@ async function bookReceipt() {
   // Alles mitschreiben, was dieser Bon angerichtet hat. Nur so lässt er sich
   // später in einem Zug zurücknehmen, statt zwanzig Zeilen von Hand.
   const spur = {
+    kind: bon.kind,
     orderNo: bon.orderNo,
     date: bon.date,
     at: new Date().toISOString(),
@@ -1576,7 +1618,9 @@ function renderLastImport() {
   const box = $('#receipt-last');
   box.hidden = !spur;
   if (!spur) return;
-  const wann = spur.date ? `Lieferung vom ${formatDateLong(spur.date)}` : 'Zuletzt eingelesen';
+  const wann = spur.date
+    ? `${spur.kind === 'till' ? 'Einkauf' : 'Lieferung'} vom ${formatDateLong(spur.date)}`
+    : 'Zuletzt eingelesen';
   $('#receipt-last-text').textContent = `${wann} — ${plural(spur.packs ?? 0, 'Packung', 'Packungen')} eingebucht.`;
 }
 

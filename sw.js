@@ -19,7 +19,7 @@
  * dass der Browser diese Datei als geändert erkennt, den neuen Worker
  * installiert und der alte Cache verworfen wird.
  */
-const CACHE = 'kuechenvorrat-v1.19.1';
+const CACHE = 'kuechenvorrat-v1.20.0';
 
 const SHELL = [
   './',
@@ -41,6 +41,7 @@ const SHELL = [
   './js/brands.js',
   './js/dedupe.js',
   './js/shelflife.js',
+  './js/tillreceipt.js',
   // Die Barcode-Erkennung für Geräte ohne eingebaute Schnittstelle (iOS).
   // Muss mit in den Cache, sonst wäre der Scan dort das einzige, was
   // offline nicht funktioniert.

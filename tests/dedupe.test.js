@@ -5,6 +5,7 @@ import {
   productTokens,
   productKey,
   sameProduct,
+  findSizeless,
   findTwin,
   duplicateGroups,
   mergedProduct,
@@ -191,4 +192,38 @@ test('die Marke im Namen zählt genauso wie die im eigenen Feld', () => {
       { brand: 'Gut & Günstig', name: 'Frischkäse Natur 300g' },
     ),
   );
+});
+
+// --- Ohne Größenangabe ----------------------------------------------------
+
+test('findet dasselbe Produkt, wenn der Bon keine Größe nennt', () => {
+  const vorrat = [
+    { id: 'p1', brand: 'Hansano', name: 'Weidemilch 1 L' },
+    { id: 'p2', brand: 'Gut&Günstig', name: 'Frischkäse Natur 200 g' },
+  ];
+  assert.equal(findSizeless(vorrat, { brand: 'Hansano', name: 'Weidemilch' })?.id, 'p1');
+  assert.equal(findSizeless(vorrat, { name: 'Hansano Weidemilch' })?.id, 'p1');
+});
+
+test('bei mehreren Größen wird nicht geraten', () => {
+  const vorrat = [
+    { id: 'p1', brand: 'Hansano', name: 'Weidemilch 1 L' },
+    { id: 'p2', brand: 'Hansano', name: 'Weidemilch 500 ml' },
+  ];
+  assert.equal(findSizeless(vorrat, { brand: 'Hansano', name: 'Weidemilch' }), undefined);
+});
+
+test('nennt der Bon selbst eine Größe, zählt sie', () => {
+  const vorrat = [{ id: 'p1', brand: 'Gut&Günstig', name: 'Frischkäse 300 g' }];
+  assert.equal(findSizeless(vorrat, { brand: 'Gut&Günstig', name: 'Frischkäse 150 g' }), undefined);
+});
+
+test('ein zusätzliches Wort bleibt ein Unterschied', () => {
+  const vorrat = [{ id: 'p1', brand: 'Gut&Günstig', name: 'Frischkäse Natur 200 g' }];
+  assert.equal(findSizeless(vorrat, { brand: 'Gut&Günstig', name: 'Frischkäse' }), undefined);
+});
+
+test('ohne Vorrat und ohne Namen passiert nichts', () => {
+  assert.equal(findSizeless([], { name: 'Milch' }), undefined);
+  assert.equal(findSizeless([{ id: 'p1', name: 'Milch' }], { name: '' }), undefined);
 });

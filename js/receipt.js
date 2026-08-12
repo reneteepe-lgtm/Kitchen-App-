@@ -24,7 +24,13 @@
  * Bezeichnung wie Anzahl werden von dort aus rückwärts gelesen. Die Preise
  * werden gar nicht erst angefasst -- sie zerfallen beim Kopieren in einzelne
  * Ziffernzeilen und interessieren für den Vorrat nicht.
+ *
+ * Der abfotografierte Kassenzettel aus dem Laden sieht ganz anders aus und
+ * hat deshalb einen eigenen Leser (`tillreceipt.js`). Welcher von beiden
+ * zuständig ist, entscheidet `readReceipt` weiter unten.
  */
+
+import { parseTillReceipt } from './tillreceipt.js';
 
 /**
  * Eine Größenangabe: "500g", "1 Stück", "4 Stück", "1kg Netz", "500ml",
@@ -85,7 +91,7 @@ export function suggestedName({ name, size }) {
 }
 
 /**
- * Liest einen kopierten Bon.
+ * Liest einen kopierten Picnic-Bon.
  *
  * @returns {{orderNo:string|null, date:string|null, items:Array<{name:string,size:string,qty:number}>}}
  */
@@ -126,4 +132,39 @@ export function parseReceipt(text) {
   }
 
   return { orderNo, date, items };
+}
+
+/** Woran ein Picnic-Bon zu erkennen ist. */
+const PICNIC_MARKER = /(Bestellnr|Lieferung von|Dein Bon|Picnic)/i;
+
+/** Woran ein Kassenbon aus dem Laden zu erkennen ist. */
+const TILL_MARKER = /(Posten\s*:|osten\s*:|R(ü|ue)ckstellnummer|Kundenbeleg|EC[- ]Cash|Girocard|MwSt|(€|EUR)\s*[x×]|^SUMME$)/im;
+
+/**
+ * Liest einen Bon -- gleich welcher Herkunft.
+ *
+ * Es gibt zwei Sorten, und sie sehen einander in nichts ähnlich: die
+ * kopierte Picnic-E-Mail und der abfotografierte Kassenzettel aus dem Laden.
+ * Welche vorliegt, soll niemand vorher ansagen müssen; erkennbar ist es am
+ * Text selbst.
+ *
+ * Der Kassenbon-Leser kommt dabei nur zum Zug, wenn der Text sich auch wie
+ * ein Bon liest -- mit Beträgen, mit "Posten", mit einem Fußteil. Denn für
+ * ihn ist jede Zeile mit ein paar Buchstaben ein möglicher Artikel; ohne
+ * diese Hürde machte ein versehentlich eingefügter Satz ein Produkt daraus.
+ *
+ * @param {string} text
+ * @param {{brands?: string[]}} [options] Marken aus dem eigenen Vorrat
+ * @returns {{kind:'picnic'|'till', orderNo:string|null, date:string|null,
+ *            posten?:number|null, items:Array<{name:string,size:string,qty:number}>}}
+ */
+export function readReceipt(text, options = {}) {
+  const picnic = { kind: 'picnic', posten: null, ...parseReceipt(text) };
+  if (PICNIC_MARKER.test(text) && picnic.items.length) return picnic;
+
+  const till = { kind: 'till', ...parseTillReceipt(text, options) };
+  const istBon = TILL_MARKER.test(text) || till.evidence;
+  if (istBon && till.items.length > picnic.items.length) return till;
+
+  return picnic;
 }
