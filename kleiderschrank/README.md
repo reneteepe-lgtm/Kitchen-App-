@@ -18,12 +18,23 @@ App.
   grau" wird ohne weiteres Zutun zu einem warmen Oberteil für den Alltag in
   Grau. Was nicht stimmt, lässt sich in einem Aufklapper korrigieren — und
   eine einmal von Hand gesetzte Angabe wird nie wieder überstimmt.
+- **Hintergrund weglassen** — Bettdecke, Fußboden und Wand werden aus dem
+  Foto entfernt, sodass die Teile freigestellt auf ruhigem Grund liegen.
+  Das ist der Unterschied zwischen einer Sammlung Handyfotos und einer
+  Übersicht. Misslingt es, bleibt das Bild unangetastet; ein Schalter im
+  Formular schaltet jederzeit zurück.
 - **Farbe aus dem Foto** — steht im Namen keine Farbe, zählt die App sie
   aus dem Bild aus: Hintergrund weg, Mitte gewichtet, Abgleich mit der
   Palette im Lab-Farbraum. Auch „gemustert" erkennt sie, wenn kein Ton das
   Bild trägt. Gerechnet wird auf dem Gerät, ohne Netz. Was im Namen steht,
   hat immer Vorrang — und wo das Bild nicht eindeutig ist, wird nichts
   behauptet.
+- **Outfits auslegen** — beim Zusammenstellen liegen die Teile auf einer
+  Fläche wie zum Fotografieren: Mütze oben, Oberteil darunter, Hose,
+  Schuhe, Uhr daneben. Jedes Teil lässt sich mit dem Finger an seine Stelle
+  ziehen, und ein Knopf ordnet alles wieder von selbst. Gespeichert wird in
+  Anteilen der Fläche, damit dieselbe Anordnung auf jedem Bildschirm
+  stimmt.
 - **Outfit des Tages** — vollständige Kombinationen aus Oberteil, Hose,
   Schuhen und, wenn das Wetter es verlangt, Jacke und Mütze. Bei zwei Grad
   kommt die Jacke mit, bei achtzig Prozent Regenwahrscheinlichkeit gewinnt,
@@ -171,6 +182,40 @@ gesetztes Grün, das niemand bemerkt, ist schlimmer als gar keine Angabe: Es
 steht danach in den Daten, geht in die gelernten Vorlieben ein und erklärt
 sich nie.
 
+## Wie der Hintergrund verschwindet
+
+Auch das geht ohne gelerntes Modell, mit einem Verfahren, das älter ist als
+jedes davon: Von den Bildrändern aus wird geflutet, und alles, was dabei
+erreicht wird, ist Hintergrund. Das trifft genau die Annahme, die bei
+Kleiderfotos fast immer stimmt — das Teil liegt in der Mitte, der Grund
+ringsherum hängt zusammen.
+
+Zwei Schwellen zugleich, und das ist der ganze Trick:
+
+- **Örtlich** (eng): Ein Bildpunkt gehört zum Hintergrund, wenn er dem
+  Nachbarn ähnelt, von dem aus er erreicht wurde. Damit folgt die Flut
+  sanften Verläufen — Schattenwurf, ungleiches Licht, Falten in der
+  Bettdecke.
+- **Insgesamt** (weit): Zusätzlich muss er der Randfarbe noch grob ähneln.
+  Ohne diese zweite Bedingung liefe die Flut über viele kleine Schritte ins
+  Kleidungsstück hinein und fräße es von außen auf.
+
+Gerechnet wird die Maske auf 180 Pixel Kantenlänge und beim Anwenden weich
+zwischen den Punkten ausgelesen. Beides zusammen kostet fast nichts und
+macht aus der harten Treppenkante einen sauberen Übergang: Eine pixelgenaue
+Kante sieht ausgeschnitten aus, eine weiche freigestellt.
+
+Und wenn das Ergebnis nicht plausibel ist, wird es verworfen — zu wenig
+entfernt (unruhiger Grund), zu viel entfernt (Teil und Grund gleichfarbig)
+oder die Mitte weg (das Verfahren hat das Falsche gegriffen). Dann bleibt
+das Foto, wie es ist. Ein halbiertes Hemd wäre schlechter als eine
+Bettdecke im Bild.
+
+Beide Fassungen werden aufbewahrt, das Original als JPEG und der
+Freisteller als PNG. Das kostet ein paar hundert Kilobyte je Teil und macht
+den Schalter umkehrbar — sonst wäre der Hintergrund nach einem Fingertipp
+unwiederbringlich fort.
+
 ## Warum die Art des Teils nicht aus dem Bild kommt
 
 Die naheliegende Frage ist, warum die App nicht auch erkennt, *dass* das ein
@@ -231,6 +276,8 @@ nichts über den Rest.
 | `js/storage.js` | Persistenz, weiches Löschen, Zusammenführen zweier Stände |
 | `js/photos.js` | Fotos: verkleinern und in IndexedDB ablegen |
 | `js/colorvision.js` | Die Farbe aus dem Foto auszählen |
+| `js/cutout.js` | Den Hintergrund aus dem Foto entfernen |
+| `js/layout.js` | Wo die Teile eines Outfits auf der Fläche liegen |
 | `js/slots.js` | Fach, Wärme, Anlass und Farbe aus dem Namen ablesen |
 | `js/outfit.js` | Kombinationen bauen und bewerten |
 | `js/preferences.js` | Die gelernten Stilvorlieben |

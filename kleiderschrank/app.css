@@ -1079,6 +1079,153 @@ button {
   font-size: 12.5px;
 }
 
+/* --- Outfit anordnen --------------------------------------------------- */
+
+.dialog-tall {
+  max-height: 90vh;
+}
+
+.dialog-layout {
+  padding: 18px;
+}
+
+.layout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/*
+ * Die Fläche, auf der das Outfit liegt.
+ *
+ * Hochformat, weil ein Mensch hochkant ist: Von der Mütze bis zu den
+ * Schuhen ist mehr Weg nach unten als zur Seite.
+ *
+ * `touch-action: none` ist hier keine Feinheit, sondern die Bedingung dafür,
+ * dass sich überhaupt etwas ziehen lässt: Ohne die Zeile deutet das Handy
+ * die erste Fingerbewegung als Scrollen, nimmt sie der Seite weg und der
+ * Zug endet nach zwei Millimetern.
+ */
+.layout-stage {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  border-radius: 18px;
+  background: var(--surface-2);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.layout-piece {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: grab;
+  touch-action: none;
+  line-height: 0;
+}
+
+.layout-piece img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* Ohne Foto braucht die Kachel ein Maß -- ein Text allein hat keins. */
+.layout-piece .tile-blank {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: var(--tile);
+  padding: 6px;
+}
+
+.layout-piece.dragging {
+  cursor: grabbing;
+  filter: drop-shadow(0 6px 14px rgba(20, 20, 18, 0.28));
+}
+
+/* --- Teile auswählen --------------------------------------------------- */
+
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.pick {
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: 13px;
+  background: var(--tile);
+  padding: 6px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pick[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.pick-thumb {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 9px;
+}
+
+.pick-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.pick-name {
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.pick-check {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: none;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.pick-check .icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 3;
+}
+
+.pick[aria-pressed='true'] .pick-check {
+  display: grid;
+}
+
 /* --- Detailansicht ----------------------------------------------------- */
 
 .detail-photo {

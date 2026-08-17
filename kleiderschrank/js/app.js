@@ -12,8 +12,17 @@
  */
 
 import { Store, LocalStorageAdapter, requestPersistence } from './storage.js';
-import { openPhotoStore, PhotoUrls, shrinkImage } from './photos.js';
+import {
+  openPhotoStore,
+  PhotoUrls,
+  shrinkImage,
+  photoKeyOf,
+  photoKeysOf,
+  CUTOUT_SUFFIX,
+} from './photos.js';
 import { colorsFromPhoto } from './colorvision.js';
+import { cutoutPhoto } from './cutout.js';
+import { defaultLayout, mergeLayout, placedItems, clampPosition, hasLayout } from './layout.js';
 import {
   addItem,
   updateItem,
@@ -55,7 +64,7 @@ import { searchItems } from './text.js';
  * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer in `sw.js`
  * mitziehen. Ein Test wacht darüber, dass beide übereinstimmen.
  */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 /**
  * In welcher Reihenfolge die Teile eines Outfits im Raster liegen.
@@ -143,6 +152,8 @@ const state = {
   photoColors: [],
   compose: {},
   placeResults: [],
+  /** Was gerade auf der Anordnungsfläche liegt. */
+  layout: { items: [], positions: {}, outfitId: null },
 };
 
 let store;
@@ -275,8 +286,15 @@ function wireEvents() {
   $('#toggle-details').addEventListener('click', () => setDetailsOpen($('#item-details').hidden));
   $('#item-warmth').addEventListener('input', updateRangeLabels);
   $('#item-formality').addEventListener('input', updateRangeLabels);
+  $('#item-cutout').addEventListener('change', zeigeVorschau);
   $('#form-item').addEventListener('submit', onItemSubmit);
   $('#form-compose').addEventListener('submit', onComposeSubmit);
+  $('#form-layout').addEventListener('submit', onLayoutSubmit);
+  $('#layout-auto').addEventListener('click', () => {
+    state.layout.positions = defaultLayout(state.layout.items);
+    renderLayoutStage();
+    toast('Neu angeordnet.');
+  });
 
   // Einstellungen
   $('#place-form').addEventListener('submit', onPlaceSearch);
@@ -510,9 +528,11 @@ function tileGrid(teile) {
  */
 function fillTile(kachel, teil, { withName = true } = {}) {
   kachel.append(blankTile(teil, { withName }));
-  if (!teil.photoId) return;
 
-  photoUrls.urlFor(teil.photoId).then((url) => {
+  const schluessel = photoKeyOf(teil);
+  if (!schluessel) return;
+
+  photoUrls.urlFor(schluessel).then((url) => {
     if (!url) return;
     kachel.replaceChildren(el('img', { src: url, alt: teil.name, loading: 'lazy' }));
   });
@@ -879,7 +899,7 @@ async function onReset() {
     return;
   }
   for (const teil of items()) {
-    if (teil.photoId) await photos.remove(teil.photoId);
+    for (const schluessel of photoKeysOf(teil)) await photos.remove(schluessel);
   }
   photoUrls.clear();
   await store.replaceAll({});
@@ -902,6 +922,12 @@ function openItemForm(teil) {
   $('#item-formality').value = String(teil?.formality ?? 2);
   $('#item-waterproof').checked = Boolean(teil?.waterproof);
   $('#item-photo').value = '';
+
+  // Der Freistell-Schalter gilt für das Foto, das gerade gewählt wird.
+  // Beim Öffnen zeigt er, wie das Teil bisher gespeichert ist -- zu sehen
+  // ist er aber erst, wenn es auch etwas zu schalten gibt.
+  $('#item-cutout').checked = Boolean(teil?.cutout);
+  $('#cutout-row').hidden = !teil?.hasCutout;
 
   const vorschau = $('#photo-preview');
   vorschau.replaceChildren(icon('i-camera'), el('span', { text: 'Foto' }));
@@ -1006,13 +1032,33 @@ async function onPhotoChosen(event) {
   if (!datei) return;
 
   try {
-    state.pendingPhoto = await shrinkImage(datei);
-    const url = URL.createObjectURL(state.pendingPhoto);
-    $('#photo-preview').replaceChildren(el('img', { src: url, alt: '' }));
+    state.pendingPhoto = { original: await shrinkImage(datei), cutout: null };
+    zeigeVorschau();
   } catch (err) {
     console.error(err);
     toast('Dieses Bild ließ sich nicht verarbeiten.');
     return;
+  }
+
+  /*
+   * Freistellen -- getrennt und mit eigenem Auffangnetz.
+   *
+   * Es darf misslingen: `cutoutPhoto` gibt von sich aus `null` zurück, wenn
+   * das Ergebnis nicht taugt, und dann bleibt schlicht das Foto mit
+   * Hintergrund. Ein halbiertes Hemd wäre schlechter als eine Bettdecke im
+   * Bild.
+   */
+  try {
+    const frei = await cutoutPhoto(state.pendingPhoto.original);
+    if (frei) {
+      state.pendingPhoto.cutout = frei.blob;
+      $('#item-cutout').checked = true;
+      zeigeVorschau();
+    }
+    $('#cutout-row').hidden = !frei;
+  } catch (err) {
+    console.warn('Freistellen nicht möglich:', err);
+    $('#cutout-row').hidden = true;
   }
 
   /*
@@ -1023,7 +1069,9 @@ async function onPhotoChosen(event) {
    * fehlende Farbe ist ein Schönheitsfehler, ein verlorenes Foto nicht.
    */
   try {
-    const gesehen = await colorsFromPhoto(state.pendingPhoto);
+    // Am Freisteller gelesen, wenn es einen gibt: Ohne Hintergrund ist die
+    // Farbe eindeutig, weil dann gar nichts anderes mehr im Bild ist.
+    const gesehen = await colorsFromPhoto(state.pendingPhoto.cutout ?? state.pendingPhoto.original);
     state.photoColors = gesehen.suggestion;
 
     // Beim Ändern nur ergänzen, nie überschreiben: Wer die Farbe einmal
@@ -1033,6 +1081,21 @@ async function onPhotoChosen(event) {
     console.warn('Farbe ließ sich nicht aus dem Bild lesen:', err);
     state.photoColors = [];
   }
+}
+
+/**
+ * Zeigt die Fassung des Fotos, die auch gespeichert würde.
+ *
+ * Damit ist der Schalter "freigestellt" keine Ankündigung, sondern zeigt
+ * sofort, was dabei herauskommt.
+ */
+function zeigeVorschau() {
+  const foto = state.pendingPhoto;
+  if (!foto) return;
+
+  const freigestellt = $('#item-cutout').checked && foto.cutout;
+  const url = URL.createObjectURL(freigestellt ? foto.cutout : foto.original);
+  $('#photo-preview').replaceChildren(el('img', { src: url, alt: '' }));
 }
 
 /**
@@ -1073,19 +1136,37 @@ async function onItemSubmit(event) {
   const bearbeitet = state.editing;
   state.pendingPhoto = null;
 
+  // Beim Ändern ohne neues Foto gilt, was schon abgelegt ist -- sonst wäre
+  // der Schalter dort ohne Wirkung.
+  const hatFreisteller = foto
+    ? Boolean(foto.cutout)
+    : Boolean(bearbeitet && store.byId('items', bearbeitet)?.hasCutout);
+  const freigestellt = $('#item-cutout').checked && hatFreisteller;
+
+  /** Beide Fassungen ablegen -- der Schalter soll umkehrbar bleiben. */
+  const legeAb = async (id) => {
+    await photos.put(id, foto.original);
+    if (foto.cutout) await photos.put(`${id}${CUTOUT_SUFFIX}`, foto.cutout);
+    for (const schluessel of photoKeysOf({ photoId: id })) photoUrls.forget(schluessel);
+  };
+
   if (bearbeitet) {
-    if (foto) {
-      await photos.put(bearbeitet, foto);
-      photoUrls.forget(bearbeitet);
-    }
+    if (foto) await legeAb(bearbeitet);
     await updateItem(store, bearbeitet, {
       ...angaben,
+      cutout: freigestellt,
+      hasCutout: hatFreisteller,
       ...(foto ? { photoId: bearbeitet } : {}),
     });
     toast('Geändert.');
   } else {
-    const teil = await addItem(store, { ...angaben, hasPhoto: Boolean(foto) });
-    if (foto) await photos.put(teil.id, foto);
+    const teil = await addItem(store, {
+      ...angaben,
+      hasPhoto: Boolean(foto),
+      cutout: freigestellt,
+      hasCutout: hatFreisteller,
+    });
+    if (foto) await legeAb(teil.id);
     toast(`„${teil.name}" ist im Schrank.`);
   }
 
@@ -1154,9 +1235,9 @@ function openItemDetail(teil) {
         text: 'Aussortieren',
         onclick: async () => {
           if (!confirm(`„${teil.name}" aussortieren?`)) return;
-          if (teil.photoId) {
-            await photos.remove(teil.photoId);
-            photoUrls.forget(teil.photoId);
+          for (const schluessel of photoKeysOf(teil)) {
+            await photos.remove(schluessel);
+            photoUrls.forget(schluessel);
           }
           await store.remove('items', teil.id);
           $('#dlg-detail').close();
@@ -1207,9 +1288,18 @@ function openSavedOutfit(outfit) {
   const teile = itemsOf(outfit, items());
   showOutfitDialog({
     teile,
+    outfit,
     titel: outfit.label || 'Outfit',
     reason: isComplete(outfit, items()) ? '' : 'Ein Teil davon ist nicht mehr im Schrank.',
     aktionen: [
+      {
+        text: 'Anordnen',
+        klasse: 'button',
+        run: () => {
+          // Erst im nächsten Durchlauf -- der Dialog schließt gerade.
+          setTimeout(() => openLayout({ items: teile, outfit, titel: outfit.label || 'Outfit' }), 0);
+        },
+      },
       {
         text: 'Heute anziehen',
         klasse: 'button button-primary',
@@ -1230,7 +1320,7 @@ function openSavedOutfit(outfit) {
   });
 }
 
-function showOutfitDialog({ teile, titel, reason, aktionen, urteil }) {
+function showOutfitDialog({ teile, titel, reason, aktionen, urteil, outfit = null }) {
   const dialog = $('#dlg-outfit');
   const koerper = $('#outfit-body');
 
@@ -1238,7 +1328,10 @@ function showOutfitDialog({ teile, titel, reason, aktionen, urteil }) {
     koerper,
     el('h2', { text: titel }),
     reason ? el('p', { class: 'muted', text: reason }) : null,
-    tileGrid(teile),
+    // Wer das Outfit einmal ausgelegt hat, soll es so wiedersehen. Ohne
+    // eigene Anordnung ist das Raster die bessere Darstellung: Es füllt die
+    // Fläche und lässt kein Teil klein in einer Ecke sitzen.
+    hasLayout(outfit) ? layoutStage(teile, outfit.layout) : tileGrid(teile),
     el(
       'div',
       { class: 'stack-tight' },
@@ -1307,7 +1400,6 @@ function showOutfitDialog({ teile, titel, reason, aktionen, urteil }) {
 
 function openCompose() {
   state.compose = {};
-  $('#compose-label').value = '';
   renderCompose();
   $('#dlg-compose').showModal();
 }
@@ -1328,22 +1420,30 @@ function renderCompose() {
         el('h3', { text: `${slot.icon} ${slot.label}` }),
         el(
           'div',
-          { class: 'chips' },
-          ...imFach.map((teil) =>
-            el('button', {
-              type: 'button',
-              class: 'chip',
-              text: teil.name,
-              dataset: { slot: slot.id, item: teil.id },
-              'aria-pressed': String(state.compose[slot.id] === teil.id),
-              onclick: () => {
-                // Zweites Antippen wählt wieder ab -- ein Fach darf leer
-                // bleiben, eine Mütze gehört nicht zu jedem Outfit.
-                state.compose[slot.id] = state.compose[slot.id] === teil.id ? null : teil.id;
-                markCompose();
+          { class: 'pick-grid' },
+          ...imFach.map((teil) => {
+            const bild = el('div', { class: 'pick-thumb' });
+            fillTile(bild, teil, { withName: false });
+
+            return el(
+              'button',
+              {
+                type: 'button',
+                class: 'pick',
+                dataset: { slot: slot.id, item: teil.id },
+                'aria-pressed': String(state.compose[slot.id] === teil.id),
+                onclick: () => {
+                  // Zweites Antippen wählt wieder ab -- ein Fach darf leer
+                  // bleiben, eine Mütze gehört nicht zu jedem Outfit.
+                  state.compose[slot.id] = state.compose[slot.id] === teil.id ? null : teil.id;
+                  markCompose();
+                },
               },
-            }),
-          ),
+              bild,
+              el('span', { class: 'pick-name', text: teil.name }),
+              el('span', { class: 'pick-check' }, icon('i-check')),
+            );
+          }),
         ),
       ),
     );
@@ -1360,7 +1460,7 @@ function renderCompose() {
  * wieder oben bei den Oberteilen.
  */
 function markCompose() {
-  for (const chip of $$('#compose-slots .chip')) {
+  for (const chip of $$('#compose-slots .pick')) {
     chip.setAttribute(
       'aria-pressed',
       String(state.compose[chip.dataset.slot] === chip.dataset.item),
@@ -1373,7 +1473,7 @@ function markCompose() {
     : 'Wähle die Teile aus, die zusammengehören.';
 }
 
-async function onComposeSubmit(event) {
+function onComposeSubmit(event) {
   const gewaehlt = Object.values(state.compose).filter(Boolean);
   if (gewaehlt.length < 2) {
     event.preventDefault();
@@ -1381,9 +1481,139 @@ async function onComposeSubmit(event) {
     return;
   }
 
+  const teile = gewaehlt.map((id) => store.byId('items', id)).filter(Boolean);
+
+  // Erst im nächsten Durchlauf: Dieser Dialog schließt sich gerade selbst
+  // (`method="dialog"`), und zwei offene Dialoge zugleich verträgt der
+  // Browser nicht.
+  setTimeout(() => openLayout({ items: teile, titel: 'Outfit anordnen' }), 0);
+}
+
+// --- Ein Outfit auf der Fläche anordnen ----------------------------------
+
+/**
+ * Öffnet die Anordnungsfläche.
+ *
+ * Zwei Wege führen hierher: ein frisch zusammengestelltes Outfit (dann ohne
+ * `outfit`) und ein gespeichertes, das umgeräumt werden soll.
+ */
+function openLayout({ items: teile, outfit = null, titel = 'Outfit anordnen' }) {
+  state.layout = {
+    items: teile,
+    positions: outfit ? mergeLayout(outfit.layout, teile) : defaultLayout(teile),
+    outfitId: outfit?.id ?? null,
+  };
+
+  $('#layout-title').textContent = titel;
+  $('#layout-label').value = outfit?.label ?? '';
+  $('#layout-save').textContent = outfit ? 'Anordnung sichern' : 'Outfit speichern';
+
+  renderLayoutStage();
+  $('#dlg-layout').showModal();
+}
+
+/**
+ * Ein Outfit, wie es ausgelegt wurde -- nur zum Ansehen.
+ *
+ * Dieselbe Fläche wie beim Anordnen, aber ohne Griffe: In der Übersicht
+ * würde man sonst beim Scrollen versehentlich etwas verschieben.
+ */
+function layoutStage(teile, layout) {
+  const buehne = el('div', { class: 'layout-stage' });
+
+  for (const { item, position, z } of placedItems(teile, layout)) {
+    const stueck = el('div', {
+      class: 'layout-piece',
+      style: `left:${position.x * 100}%; top:${position.y * 100}%; width:${position.scale * 100}%; z-index:${z}`,
+    });
+    fillTile(stueck, item, { withName: false });
+    buehne.append(stueck);
+  }
+
+  return buehne;
+}
+
+function renderLayoutStage() {
+  const buehne = $('#layout-stage');
+  buehne.replaceChildren();
+
+  for (const { item, position, z } of placedItems(state.layout.items, state.layout.positions)) {
+    const stueck = el('button', {
+      type: 'button',
+      class: 'layout-piece',
+      'aria-label': `${item.name} verschieben`,
+      style: `left:${position.x * 100}%; top:${position.y * 100}%; width:${position.scale * 100}%; z-index:${z}`,
+    });
+
+    fillTile(stueck, item, { withName: false });
+    macheZiehbar(stueck, item.id);
+    buehne.append(stueck);
+  }
+}
+
+/**
+ * Macht ein Teil mit dem Finger verschiebbar.
+ *
+ * Verschoben wird um die Strecke, die der Finger zurücklegt, und nicht auf
+ * den Finger hin: Sonst spränge das Teil beim Antippen mit seiner Mitte
+ * unter die Fingerspitze, und man verlöre genau die Stelle, die man
+ * eigentlich treffen wollte.
+ *
+ * `pointer`-Ereignisse statt `touch` und `mouse` getrennt -- ein Weg für
+ * Finger, Maus und Stift.
+ */
+function macheZiehbar(knoten, itemId) {
+  knoten.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+
+    const flaeche = $('#layout-stage').getBoundingClientRect();
+    const start = { x: event.clientX, y: event.clientY };
+    const anfang = state.layout.positions[itemId];
+
+    knoten.setPointerCapture(event.pointerId);
+    knoten.classList.add('dragging');
+
+    const bewegen = (e) => {
+      const stelle = clampPosition({
+        ...anfang,
+        x: anfang.x + (e.clientX - start.x) / flaeche.width,
+        y: anfang.y + (e.clientY - start.y) / flaeche.height,
+      });
+      state.layout.positions[itemId] = stelle;
+      knoten.style.left = `${stelle.x * 100}%`;
+      knoten.style.top = `${stelle.y * 100}%`;
+    };
+
+    const loslassen = () => {
+      knoten.classList.remove('dragging');
+      knoten.removeEventListener('pointermove', bewegen);
+      knoten.removeEventListener('pointerup', loslassen);
+      knoten.removeEventListener('pointercancel', loslassen);
+    };
+
+    knoten.addEventListener('pointermove', bewegen);
+    knoten.addEventListener('pointerup', loslassen);
+    knoten.addEventListener('pointercancel', loslassen);
+  });
+}
+
+async function onLayoutSubmit() {
+  const { items: teile, positions, outfitId } = state.layout;
+  const name = $('#layout-label').value.trim();
+
+  if (outfitId) {
+    const outfit = store.byId('outfits', outfitId);
+    if (outfit) {
+      await store.put('outfits', { ...outfit, layout: positions, label: name || outfit.label });
+      toast('Anordnung gesichert.');
+    }
+    return;
+  }
+
   await saveOutfit(store, {
-    itemIds: gewaehlt,
-    label: $('#compose-label').value.trim() || 'Eigenes Outfit',
+    itemIds: teile.map((teil) => teil.id),
+    label: name || 'Eigenes Outfit',
+    layout: positions,
     occasion: occasion(),
   });
   toast('Outfit gespeichert.');

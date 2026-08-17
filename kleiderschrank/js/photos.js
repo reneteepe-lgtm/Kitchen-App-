@@ -74,6 +74,26 @@ export async function shrinkImage(file, { maxEdge = MAX_EDGE, quality = 0.75 } =
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
 }
 
+/**
+ * Unter welchem Schlüssel das anzuzeigende Bild eines Teils liegt.
+ *
+ * Von jedem Foto werden zwei Fassungen aufbewahrt: das Original als JPEG
+ * und, wenn das Freistellen gelungen ist, der Freisteller als PNG. Beide zu
+ * behalten kostet ein paar hundert Kilobyte und macht den Schalter
+ * "freigestellt" umkehrbar -- sonst wäre der Hintergrund nach einem
+ * Fingertipp unwiederbringlich fort.
+ */
+export const CUTOUT_SUFFIX = '-frei';
+
+export const photoKeyOf = (item) => {
+  if (!item?.photoId) return null;
+  return item.cutout ? `${item.photoId}${CUTOUT_SUFFIX}` : item.photoId;
+};
+
+/** Beide Fassungen eines Teils -- zum Löschen und zum Vergessen der Adresse. */
+export const photoKeysOf = (item) =>
+  item?.photoId ? [item.photoId, `${item.photoId}${CUTOUT_SUFFIX}`] : [];
+
 /** Fotoablage in IndexedDB. */
 export class PhotoStore {
   #db = null;

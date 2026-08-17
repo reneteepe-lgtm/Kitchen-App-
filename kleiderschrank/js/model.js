@@ -65,6 +65,17 @@ export function createItem(data) {
     brand: String(data.brand ?? '').trim(),
     ...guessed,
     photoId: data.hasPhoto ? id : null,
+    /**
+     * Zwei Angaben, und sie sind wirklich zwei:
+     *
+     * `hasCutout` sagt, dass eine freigestellte Fassung *abgelegt ist*,
+     * `cutout`, dass sie *gezeigt wird*. Ohne die Trennung wäre der
+     * Schalter eine Einbahnstraße -- wer den Hintergrund einmal wieder
+     * einblendet, hätte danach nichts mehr, wovon die App wüsste, dass es
+     * auch anders geht.
+     */
+    cutout: data.cutout ?? false,
+    hasCutout: data.hasCutout ?? false,
     favorite: data.favorite ?? false,
     createdAt: data.createdAt ?? new Date().toISOString(),
     wornCount: data.wornCount ?? 0,
@@ -169,6 +180,14 @@ export function createOutfit(data) {
     itemIds: [...(data.itemIds ?? [])],
     label: String(data.label ?? '').trim(),
     occasion: data.occasion ?? 'alltag',
+    /**
+     * Wo die Teile auf der Fläche liegen, in Anteilen der Fläche.
+     * Leer heißt: noch nie angefasst -- dann gilt die Grundanordnung aus
+     * `layout.js`, und die wird nicht mitgespeichert. Eine ausgerechnete
+     * Voreinstellung in den Daten festzuhalten hieße, sie nie wieder
+     * verbessern zu können.
+     */
+    layout: data.layout ?? {},
     createdAt: data.createdAt ?? new Date().toISOString(),
     wornCount: data.wornCount ?? 0,
     lastWornAt: data.lastWornAt ?? null,

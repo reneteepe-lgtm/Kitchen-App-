@@ -31,6 +31,8 @@
       <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
       <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
       <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 4h4v4M4 20 20 4M4 4l5 5m5 5 6 6v-4"/></symbol>
+      <symbol id="i-wand" viewBox="0 0 24 24"><path d="M15 4 4 15l5 5L20 9zM14 5l5 5M6 3.5 6.6 5.6 8.7 6.2 6.6 6.8 6 8.9 5.4 6.8 3.3 6.2 5.4 5.6zM18.5 14.5l.4 1.4 1.4.4-1.4.4-.4 1.4-.4-1.4-1.4-.4 1.4-.4z"/></symbol>
+      <symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></symbol>
     </svg>
 
     <div class="app">
@@ -291,6 +293,15 @@
           <span class="photo-hint muted">Antippen zum Fotografieren oder Auswählen</span>
         </label>
 
+        <!--
+          Steht nur da, wenn das Freistellen auch gelungen ist. Ein Schalter,
+          der nichts bewirkt, ist schlimmer als keiner.
+        -->
+        <label class="checkbox" id="cutout-row" hidden>
+          <input id="item-cutout" type="checkbox" checked />
+          <span>Hintergrund weglassen</span>
+        </label>
+
         <label class="field">
           <span>Was ist das?</span>
           <input id="item-name" type="text" required placeholder="z. B. Wollpullover grau" autocomplete="off" />
@@ -351,19 +362,42 @@
       <div id="outfit-body"></div>
     </dialog>
 
-    <!-- ============ Eigenes Outfit bauen ============ -->
+    <!-- ============ Eigenes Outfit bauen: Schritt 1, auswählen ============ -->
     <dialog id="dlg-compose" class="dialog dialog-tall">
       <form method="dialog" id="form-compose">
-        <h2>Outfit zusammenstellen</h2>
+        <h2>Teile auswählen</h2>
         <p class="muted" id="compose-hint">Wähle die Teile aus, die zusammengehören.</p>
         <div id="compose-slots" class="stack"></div>
-        <label class="field">
-          <span>Wie soll es heißen?</span>
-          <input id="compose-label" type="text" placeholder="z. B. Freitag im Büro" autocomplete="off" />
-        </label>
         <div class="dialog-actions">
           <button type="button" class="button button-ghost" data-close>Abbrechen</button>
-          <button type="submit" class="button button-primary">Speichern</button>
+          <button type="submit" class="button button-primary">Weiter zum Anordnen</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ============ Schritt 2: auf der Fläche anordnen ============ -->
+    <dialog id="dlg-layout" class="dialog dialog-layout">
+      <form method="dialog" id="form-layout">
+        <div class="layout-head">
+          <h2 id="layout-title">Outfit anordnen</h2>
+          <button type="button" class="icon-button" id="layout-auto" title="Von selbst anordnen" aria-label="Von selbst anordnen">
+            <svg class="icon" aria-hidden="true"><use href="#i-wand" /></svg>
+          </button>
+        </div>
+        <p class="muted fineprint" id="layout-hint">
+          Zieh die Teile an die Stelle, an der du sie haben willst.
+        </p>
+
+        <div class="layout-stage" id="layout-stage"></div>
+
+        <label class="field">
+          <span>Wie soll es heißen?</span>
+          <input id="layout-label" type="text" placeholder="z. B. Freitag im Büro" autocomplete="off" />
+        </label>
+
+        <div class="dialog-actions">
+          <button type="button" class="button button-ghost" data-close>Abbrechen</button>
+          <button type="submit" class="button button-primary" id="layout-save">Anordnung sichern</button>
         </div>
       </form>
     </dialog>
