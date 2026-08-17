@@ -1,11 +1,12 @@
 {
   "name": "kuechenvorrat",
   "version": "1.0.0",
-  "description": "Vorratsverwaltung für die Küche mit lernender Verbrauchsprognose",
+  "description": "Zwei kleine Web-Apps ohne Server: Vorratsverwaltung für die Küche und ein Kleiderschrank mit Outfitvorschlägen",
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "node --test tests/",
-    "serve": "node scripts/serve.js"
+    "test": "node --test \"tests/*.test.js\" \"kleiderschrank/tests/*.test.js\"",
+    "serve": "node scripts/serve.js",
+    "icons": "node kleiderschrank/scripts/make-icons.js"
   }
 }

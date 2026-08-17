@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#3a6b45" />
+    <title>Mein Kleiderschrank</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-180.png" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <!--
+      Die Symbole stehen einmal hier und werden über <use> eingebunden.
+      Sonst stünde dasselbe Pfad-Gekritzel ein Dutzend Mal in der Datei --
+      und die Reiterleiste allein bräuchte fünf Kopien davon.
+    -->
+    <svg class="sprite" aria-hidden="true">
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+      <symbol id="i-shirt" viewBox="0 0 24 24"><path d="M9 3 5 5 3 9l3 1.5V21h12V10.5L21 9l-2-4-4-2a3 3 0 0 1-6 0z"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-hanger" viewBox="0 0 24 24"><path d="M12 8a2.5 2.5 0 1 1 2.5-2.5M12 8v2.5L3.5 16A1.5 1.5 0 0 0 4.3 19h15.4a1.5 1.5 0 0 0 .8-3L12 10.5"/></symbol>
+      <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 3 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1z"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h3l2-2h6l2 2h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+      <symbol id="i-cross" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+      <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 4h4v4M4 20 20 4M4 4l5 5m5 5 6 6v-4"/></symbol>
+    </svg>
+
+    <div class="app">
+      <main id="main">
+        <!-- ============ Start ============ -->
+        <section id="view-home" class="view" aria-label="Start">
+          <header class="page-head">
+            <h1>Mein Kleiderschrank</h1>
+            <button id="btn-settings" class="icon-button" aria-label="Einstellungen">
+              <svg class="icon" aria-hidden="true"><use href="#i-gear" /></svg>
+            </button>
+          </header>
+
+          <!--
+            Die Trainingskarte. Sie steht ganz oben, weil sie die einzige
+            Stelle ist, an der die App über sich selbst Auskunft gibt: wie
+            viel sie weiß und woher.
+          -->
+          <article class="card training-card">
+            <button class="training-main" id="open-training">
+              <div class="ring" aria-hidden="true">
+                <svg viewBox="0 0 120 120">
+                  <circle class="ring-track" cx="60" cy="60" r="52" />
+                  <circle class="ring-value" id="ring-value" cx="60" cy="60" r="52" />
+                </svg>
+                <div class="ring-label">
+                  <strong id="ring-percent">0 %</strong>
+                  <span>trainiert</span>
+                </div>
+              </div>
+
+              <div class="training-text">
+                <p class="eyebrow"><span class="dot"></span><span id="training-state">Noch am Anfang</span></p>
+                <h2 id="training-headline">Deine KI ist zu 0 % trainiert</h2>
+                <p class="muted" id="training-sub">Trainiere deine Stilvorlieben</p>
+              </div>
+
+              <span class="chevron" aria-hidden="true">
+                <svg class="icon"><use href="#i-chevron" /></svg>
+              </span>
+            </button>
+
+            <div class="card-foot">
+              <span id="training-hint" class="muted"></span>
+              <button type="button" class="link-button" id="train-now">
+                Jetzt trainieren <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg>
+              </button>
+            </div>
+          </article>
+
+          <article class="card prose-card" id="intro-card">
+            <p id="intro-text">
+              Deine App lernt aus jedem Urteil, das du fällst. Komm täglich
+              zurück, um deinen Trainingsfortschritt zu sehen.
+            </p>
+            <button type="button" class="link-button" id="intro-action">
+              Trainingszentrum entdecken <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg>
+            </button>
+          </article>
+
+          <section class="section">
+            <div class="section-head">
+              <div>
+                <h2>Outfit des Tages</h2>
+                <p class="place-line muted">
+                  <svg class="icon icon-sm" aria-hidden="true"><use href="#i-pin" /></svg>
+                  <button type="button" class="quiet-button" id="weather-line">Ort wählen</button>
+                </p>
+              </div>
+              <button type="button" class="pill" id="btn-more">Mehr erstellen</button>
+            </div>
+
+            <div class="scroller" id="suggestions"></div>
+            <p class="empty-state" id="suggestions-empty" hidden></p>
+          </section>
+
+          <section class="section">
+            <div class="section-head">
+              <h2>Gespeicherte Outfits</h2>
+              <button type="button" class="pill" id="btn-all-outfits">Alle ansehen</button>
+            </div>
+            <div class="scroller" id="saved-strip"></div>
+            <p class="empty-state" id="saved-empty" hidden>
+              Noch nichts gespeichert.<br />
+              Tippe bei einem Vorschlag auf „Merken".
+            </p>
+          </section>
+        </section>
+
+        <!-- ============ Schrank ============ -->
+        <section id="view-wardrobe" class="view" hidden aria-label="Schrank">
+          <header class="page-head">
+            <h1>Schrank</h1>
+            <span class="count-badge" id="wardrobe-count"></span>
+          </header>
+
+          <div class="search-row">
+            <svg class="icon search-icon" aria-hidden="true"><use href="#i-search" /></svg>
+            <input id="wardrobe-search" type="search" placeholder="Was suchst du?" autocomplete="off" aria-label="Schrank durchsuchen" />
+          </div>
+
+          <div class="chips" id="slot-filter" role="group" aria-label="Nach Fach filtern"></div>
+
+          <div class="grid" id="wardrobe-grid"></div>
+          <p class="empty-state" id="wardrobe-empty" hidden>
+            Der Schrank ist noch leer.<br />
+            Tippe unten auf <strong>+</strong> und fotografiere das erste Teil.
+          </p>
+        </section>
+
+        <!-- ============ Outfits ============ -->
+        <section id="view-outfits" class="view" hidden aria-label="Outfits">
+          <header class="page-head">
+            <h1>Outfits</h1>
+            <button type="button" class="pill" id="btn-compose">Selbst bauen</button>
+          </header>
+          <div id="outfit-list" class="stack"></div>
+          <p class="empty-state" id="outfits-empty" hidden>
+            Noch keine Outfits gespeichert.<br />
+            Merke dir einen Vorschlag von der Startseite oder stell dir selbst eins zusammen.
+          </p>
+        </section>
+
+        <!-- ============ Trainingszentrum ============ -->
+        <section id="view-training" class="view" hidden aria-label="Trainingszentrum">
+          <header class="page-head">
+            <h1>Trainingszentrum</h1>
+          </header>
+
+          <article class="card progress-card">
+            <div class="progress-bar" aria-hidden="true"><span id="progress-fill"></span></div>
+            <p class="progress-text"><strong id="progress-percent">0 %</strong> <span class="muted" id="progress-detail"></span></p>
+          </article>
+
+          <div id="training-stage"></div>
+
+          <section class="section" id="taste-section" hidden>
+            <div class="section-head"><h2>Was die App gelernt hat</h2></div>
+            <article class="card">
+              <div class="taste-block">
+                <h3>Das gefällt dir</h3>
+                <div class="chips" id="taste-liked"></div>
+              </div>
+              <div class="taste-block" id="taste-disliked-block">
+                <h3>Das eher nicht</h3>
+                <div class="chips" id="taste-disliked"></div>
+              </div>
+              <p class="muted fineprint">
+                Alles davon ist auf diesem Gerät gerechnet und bleibt hier.
+              </p>
+            </article>
+          </section>
+        </section>
+
+        <!-- ============ Einstellungen ============ -->
+        <section id="view-more" class="view" hidden aria-label="Einstellungen">
+          <header class="page-head">
+            <h1>Einstellungen</h1>
+          </header>
+
+          <article class="card">
+            <h2>Ort für das Wetter</h2>
+            <p class="muted" id="place-current">Noch kein Ort gewählt.</p>
+            <form id="place-form" class="search-row" autocomplete="off">
+              <input id="place-input" type="search" placeholder="Ort suchen …" aria-label="Ort suchen" />
+            </form>
+            <div id="place-results" class="stack-tight"></div>
+            <div class="row-buttons">
+              <button type="button" class="button" id="btn-locate">Standort verwenden</button>
+              <button type="button" class="button button-ghost" id="btn-refresh-weather">Wetter neu holen</button>
+            </div>
+            <p class="muted fineprint">
+              An den Wetterdienst geht nur der Ort. Was in deinem Schrank hängt,
+              verlässt dieses Gerät nie.
+            </p>
+          </article>
+
+          <article class="card">
+            <h2>Anlass</h2>
+            <p class="muted">Wofür die Startseite Vorschläge macht.</p>
+            <div class="chips" id="occasion-choice" role="group" aria-label="Anlass wählen"></div>
+          </article>
+
+          <article class="card">
+            <h2>Sicherung</h2>
+            <p class="muted" id="storage-line"></p>
+            <div class="row-buttons">
+              <button type="button" class="button" id="btn-export">Daten sichern</button>
+              <button type="button" class="button button-ghost" id="btn-import">Sicherung einlesen</button>
+            </div>
+            <p class="muted fineprint">
+              Die Sicherung enthält alle Teile, Outfits und Urteile — aber
+              keine Fotos: Die wären als Text um ein Vielfaches größer als
+              alles andere zusammen.
+            </p>
+            <input id="import-file" type="file" accept="application/json" hidden />
+          </article>
+
+          <article class="card">
+            <h2>Vergessene Teile</h2>
+            <p class="muted" id="forgotten-line"></p>
+            <div id="forgotten-list" class="stack-tight"></div>
+          </article>
+
+          <article class="card">
+            <h2>Über diese App</h2>
+            <p class="muted">
+              Läuft ohne Konto und ohne Server. Alles bleibt auf diesem Gerät.
+            </p>
+            <p class="muted fineprint">Fassung <span id="app-version">—</span></p>
+            <div class="row-buttons">
+              <button type="button" class="button button-danger" id="btn-reset">Alles löschen</button>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <!-- ============ Reiterleiste ============ -->
+      <!--
+        Bewusst kein `role="tablist"`: Der grüne Knopf in der Mitte gehört
+        mit dazu, öffnet aber keinen Bereich, sondern einen Dialog. Eine
+        Reiterleiste mit einem Element, das kein Reiter ist, wäre für
+        Vorlesehilfen falsch ausgezeichnet -- `aria-current` sagt schlicht,
+        wo man gerade ist.
+      -->
+      <nav class="tabbar" aria-label="Bereiche">
+        <button type="button" class="tab" data-view="home" aria-current="page" aria-label="Start">
+          <svg class="icon" aria-hidden="true"><use href="#i-home" /></svg>
+        </button>
+        <button type="button" class="tab" data-view="wardrobe" aria-label="Schrank">
+          <svg class="icon" aria-hidden="true"><use href="#i-shirt" /></svg>
+        </button>
+        <button type="button" class="tab tab-add" id="btn-add" aria-label="Teil hinzufügen">
+          <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+        </button>
+        <button type="button" class="tab" data-view="outfits" aria-label="Outfits">
+          <svg class="icon" aria-hidden="true"><use href="#i-hanger" /></svg>
+        </button>
+        <button type="button" class="tab" data-view="training" aria-label="Trainingszentrum">
+          <svg class="icon" aria-hidden="true"><use href="#i-compass" /></svg>
+        </button>
+      </nav>
+    </div>
+
+    <!-- ============ Teil erfassen und ändern ============ -->
+    <dialog id="dlg-item" class="dialog">
+      <form method="dialog" id="form-item">
+        <h2 id="item-form-title">Neues Teil</h2>
+
+        <label class="photo-picker" id="photo-picker">
+          <input type="file" id="item-photo" accept="image/*" hidden />
+          <span class="photo-preview" id="photo-preview">
+            <svg class="icon" aria-hidden="true"><use href="#i-camera" /></svg>
+            <span>Foto</span>
+          </span>
+          <span class="photo-hint muted">Antippen zum Fotografieren oder Auswählen</span>
+        </label>
+
+        <label class="field">
+          <span>Was ist das?</span>
+          <input id="item-name" type="text" required placeholder="z. B. Wollpullover grau" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span>Marke <span class="muted">(wenn du magst)</span></span>
+          <input id="item-brand" type="text" placeholder="z. B. Uniqlo" autocomplete="off" />
+        </label>
+
+        <!--
+          Was die App aus dem Namen gelesen hat, steht sofort da. Nicht als
+          Formular, sondern als Satz: Wer nichts ändern will, muss nichts
+          anfassen; wer widerspricht, klappt es auf.
+        -->
+        <div class="guessed" id="guessed">
+          <p class="guessed-line"><span id="guessed-text" class="muted"></span></p>
+          <button type="button" class="link-button" id="toggle-details">Stimmt nicht ganz</button>
+        </div>
+
+        <div class="details" id="item-details" hidden>
+          <label class="field">
+            <span>Fach</span>
+            <select id="item-slot"></select>
+          </label>
+          <label class="field">
+            <span>Wärme: <output id="warmth-out"></output></span>
+            <input id="item-warmth" type="range" min="0" max="5" step="1" />
+          </label>
+          <label class="field">
+            <span>Anlass: <output id="formality-out"></output></span>
+            <input id="item-formality" type="range" min="0" max="4" step="1" />
+          </label>
+          <div class="field">
+            <span>Farbe</span>
+            <div class="swatches" id="item-colors" role="group" aria-label="Farbe wählen"></div>
+          </div>
+          <label class="checkbox">
+            <input id="item-waterproof" type="checkbox" />
+            <span>Hält Regen ab</span>
+          </label>
+        </div>
+
+        <div class="dialog-actions">
+          <button type="button" class="button button-ghost" data-close>Abbrechen</button>
+          <button type="submit" class="button button-primary" id="item-save">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ============ Ein Teil ansehen ============ -->
+    <dialog id="dlg-detail" class="dialog">
+      <div id="detail-body"></div>
+    </dialog>
+
+    <!-- ============ Outfit ansehen ============ -->
+    <dialog id="dlg-outfit" class="dialog">
+      <div id="outfit-body"></div>
+    </dialog>
+
+    <!-- ============ Eigenes Outfit bauen ============ -->
+    <dialog id="dlg-compose" class="dialog dialog-tall">
+      <form method="dialog" id="form-compose">
+        <h2>Outfit zusammenstellen</h2>
+        <p class="muted" id="compose-hint">Wähle die Teile aus, die zusammengehören.</p>
+        <div id="compose-slots" class="stack"></div>
+        <label class="field">
+          <span>Wie soll es heißen?</span>
+          <input id="compose-label" type="text" placeholder="z. B. Freitag im Büro" autocomplete="off" />
+        </label>
+        <div class="dialog-actions">
+          <button type="button" class="button button-ghost" data-close>Abbrechen</button>
+          <button type="submit" class="button button-primary">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
