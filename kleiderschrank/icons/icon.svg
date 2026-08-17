@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Kleiderbügel">
+  <rect width="100" height="100" rx="22.5" fill="#3a6b45"/>
+  <g fill="none" stroke="#ffffff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="50" cy="34.5" r="7.2"/>
+    <path d="M50 44v4"/>
+    <path d="M50 47 19 67.5h62L50 47z"/>
+  </g>
+</svg>

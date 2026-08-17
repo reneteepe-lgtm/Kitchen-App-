@@ -6,6 +6,13 @@ und um abschätzen zu können, wann etwas voraussichtlich zu Ende geht.
 Läuft im Browser, ohne Konto, ohne Server, ohne Installation. Auf dem Handy
 lässt sie sich zum Startbildschirm hinzufügen und verhält sich dann wie eine App.
 
+> **In diesem Repository liegen zwei Apps.** Diese hier im Wurzelverzeichnis,
+> und daneben [**Mein Kleiderschrank**](kleiderschrank/) — dieselbe Bauweise,
+> aber für die Frage, was man heute anzieht: Kleiderschrank erfassen,
+> Outfitvorschläge nach Wetter und Anlass, lernende Stilvorlieben. Sie teilen
+> sich nur `npm test` und den Entwicklungsserver; im Code ist keine der
+> beiden von der anderen abhängig.
+
 ## Was sie kann
 
 - **Vorrat sehen** — alle Produkte mit Bestand in Packungen, nach Fächern
