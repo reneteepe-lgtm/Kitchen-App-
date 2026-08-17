@@ -20,7 +20,7 @@
  * dass der Browser diese Datei als geändert erkennt, den neuen Worker
  * installiert und der alte Cache verworfen wird.
  */
-const CACHE = 'kleiderschrank-v1.0.0';
+const CACHE = 'kleiderschrank-v1.1.0';
 
 const SHELL = [
   './',
@@ -32,6 +32,7 @@ const SHELL = [
   './js/model.js',
   './js/storage.js',
   './js/photos.js',
+  './js/colorvision.js',
   './js/slots.js',
   './js/text.js',
   './js/outfit.js',

@@ -13,6 +13,7 @@
 
 import { Store, LocalStorageAdapter, requestPersistence } from './storage.js';
 import { openPhotoStore, PhotoUrls, shrinkImage } from './photos.js';
+import { colorsFromPhoto } from './colorvision.js';
 import {
   addItem,
   updateItem,
@@ -54,7 +55,7 @@ import { searchItems } from './text.js';
  * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer in `sw.js`
  * mitziehen. Ein Test wacht darüber, dass beide übereinstimmen.
  */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 /**
  * In welcher Reihenfolge die Teile eines Outfits im Raster liegen.
@@ -138,6 +139,8 @@ const state = {
   editing: null,
   pendingPhoto: null,
   formColors: [],
+  /** Was auf dem Foto zu sehen war -- getrennt, weil der Name Vorrang hat. */
+  photoColors: [],
   compose: {},
   placeResults: [],
 };
@@ -889,6 +892,7 @@ function openItemForm(teil) {
   state.editing = teil?.id ?? null;
   state.pendingPhoto = null;
   state.formColors = teil ? [...(teil.colors ?? [])] : [];
+  state.photoColors = [];
 
   $('#item-form-title').textContent = teil ? 'Teil ändern' : 'Neues Teil';
   $('#item-name').value = teil?.name ?? '';
@@ -924,30 +928,45 @@ function setDetailsOpen(open) {
   $('#guessed').hidden = open;
 }
 
+const farbnamen = (ids) =>
+  ids.map((id) => colorById(id)?.label.toLowerCase()).filter(Boolean);
+
 /**
- * Der Satz, der zeigt, was die App aus dem Namen gelesen hat.
+ * Der Satz, der zeigt, was die App verstanden hat.
  *
  * Er steht da, während man tippt. Das ist der ganze Trick beim Erfassen:
  * Wer sieht, dass "Wollpullover grau" richtig verstanden wurde, klappt die
  * Auswahlfelder nie auf.
+ *
+ * Steht die Farbe nicht im Namen, sondern kommt aus dem Foto, wird das
+ * dazugeschrieben. Eine Angabe, die aus dem Nichts auftaucht, wird sonst
+ * entweder übersehen oder für einen Fehler gehalten.
  */
 function updateGuessLine() {
   const name = $('#item-name').value;
+  const ausDemFoto = state.photoColors;
+
   if (!name.trim()) {
-    $('#guessed-text').textContent = 'Schreib die Bezeichnung — den Rest liest die App daraus ab.';
+    $('#guessed-text').textContent = ausDemFoto.length
+      ? `Auf dem Foto: ${farbnamen(ausDemFoto).join(', ')}. Fehlt noch die Bezeichnung.`
+      : 'Schreib die Bezeichnung — den Rest liest die App daraus ab.';
     return;
   }
 
   const geraten = guessAttributes(name);
+  const farben = geraten.colors.length ? geraten.colors : ausDemFoto;
+
   const teile = [
     slotById(geraten.slot)?.one ?? 'Teil',
     ['sehr luftig', 'luftig', 'leicht', 'mittelwarm', 'warm', 'sehr warm'][geraten.warmth],
     formalityLabel(geraten.formality).toLowerCase(),
-    ...geraten.colors.map((farbe) => colorById(farbe)?.label.toLowerCase()).filter(Boolean),
+    ...farbnamen(farben),
   ];
   if (geraten.waterproof) teile.push('regenfest');
 
-  $('#guessed-text').textContent = `Erkannt: ${teile.join(' · ')}`;
+  const ausDemBild = !geraten.colors.length && ausDemFoto.length;
+  $('#guessed-text').textContent =
+    `Erkannt: ${teile.join(' · ')}${ausDemBild ? ' — Farbe aus dem Foto' : ''}`;
 
   // Die Auswahlfelder folgen mit, damit beim Aufklappen nichts anderes
   // dasteht, als eben noch angezeigt wurde.
@@ -956,7 +975,7 @@ function updateGuessLine() {
     $('#item-warmth').value = String(geraten.warmth);
     $('#item-formality').value = String(geraten.formality);
     $('#item-waterproof').checked = geraten.waterproof;
-    state.formColors = geraten.colors;
+    state.formColors = farben;
     updateRangeLabels();
     updateSwatches();
   }
@@ -993,7 +1012,41 @@ async function onPhotoChosen(event) {
   } catch (err) {
     console.error(err);
     toast('Dieses Bild ließ sich nicht verarbeiten.');
+    return;
   }
+
+  /*
+   * Die Farbe aus dem Bild lesen.
+   *
+   * Getrennt vom Verkleinern und mit eigenem Auffangnetz: Wenn das
+   * Auszählen schiefgeht, soll das Foto trotzdem gespeichert werden. Eine
+   * fehlende Farbe ist ein Schönheitsfehler, ein verlorenes Foto nicht.
+   */
+  try {
+    const gesehen = await colorsFromPhoto(state.pendingPhoto);
+    state.photoColors = gesehen.suggestion;
+
+    // Beim Ändern nur ergänzen, nie überschreiben: Wer die Farbe einmal
+    // von Hand gesetzt hat, will sie nicht durch ein neues Foto verlieren.
+    if (!state.editing || !state.formColors.length) applyColorSources();
+  } catch (err) {
+    console.warn('Farbe ließ sich nicht aus dem Bild lesen:', err);
+    state.photoColors = [];
+  }
+}
+
+/**
+ * Legt fest, wer bei der Farbe das letzte Wort hat: der Name.
+ *
+ * Wer "Wollpullover grau" tippt, hat die Frage beantwortet -- dann muss das
+ * Bild nicht mitreden. Nur wo im Namen keine Farbe steht, zählt, was auf
+ * dem Foto zu sehen war.
+ */
+function applyColorSources() {
+  const ausDemNamen = guessAttributes($('#item-name').value).colors;
+  state.formColors = ausDemNamen.length ? ausDemNamen : [...state.photoColors];
+  updateSwatches();
+  updateGuessLine();
 }
 
 async function onItemSubmit(event) {

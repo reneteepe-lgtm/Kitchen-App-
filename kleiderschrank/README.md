@@ -18,6 +18,12 @@ App.
   grau" wird ohne weiteres Zutun zu einem warmen Oberteil für den Alltag in
   Grau. Was nicht stimmt, lässt sich in einem Aufklapper korrigieren — und
   eine einmal von Hand gesetzte Angabe wird nie wieder überstimmt.
+- **Farbe aus dem Foto** — steht im Namen keine Farbe, zählt die App sie
+  aus dem Bild aus: Hintergrund weg, Mitte gewichtet, Abgleich mit der
+  Palette im Lab-Farbraum. Auch „gemustert" erkennt sie, wenn kein Ton das
+  Bild trägt. Gerechnet wird auf dem Gerät, ohne Netz. Was im Namen steht,
+  hat immer Vorrang — und wo das Bild nicht eindeutig ist, wird nichts
+  behauptet.
 - **Outfit des Tages** — vollständige Kombinationen aus Oberteil, Hose,
   Schuhen und, wenn das Wetter es verlangt, Jacke und Mütze. Bei zwei Grad
   kommt die Jacke mit, bei achtzig Prozent Regenwahrscheinlichkeit gewinnt,
@@ -46,6 +52,11 @@ was angezogen wurde, nicht, was gefällt.
 
 Es gibt kein Konto, keine Anmeldung und keinen Schlüssel, der irgendwann
 abläuft.
+
+Sie erkennt auch **nicht am Foto, was für ein Kleidungsstück** das ist. Das
+ist keine Nachlässigkeit, sondern eine Abwägung — die Begründung steht
+weiter unten unter [„Warum die Art des Teils nicht aus dem Bild
+kommt"](#warum-die-art-des-teils-nicht-aus-dem-bild-kommt).
 
 ## Loslegen
 
@@ -131,6 +142,60 @@ Die Begründung unter jedem Vorschlag („Warm genug für −2 °C", „Hält de
 Regen ab") ist keine Verzierung: Es ist der Gesichtspunkt, der tatsächlich
 den Ausschlag gab. Wo keiner hervorsticht, steht auch nichts.
 
+## Wie die Farbe aus dem Foto kommt
+
+Farbe ist die eine Frage, die ein Bild wirklich beantwortet: Sie *steht*
+darin und muss nicht erkannt, sondern nur ausgezählt werden. Vier Schritte,
+in `js/colorvision.js`:
+
+1. **Klein rechnen.** Das Foto wird auf 64 × 64 Bildpunkte gebracht. Das
+   genügt für eine Farbfrage vollkommen, macht aus einer halben Sekunde
+   Rechnen ein paar Millisekunden — und mittelt nebenbei Stoffstruktur und
+   Bildrauschen weg.
+2. **Hintergrund abziehen.** Kleidung wird auf dem Bett, dem Boden oder vor
+   der Wand fotografiert. Aus dem Rahmen des Bildes wird der Median genommen
+   (nicht der Mittelwert — ein Ärmel, der in den Rand ragt, verzöge den) und
+   alles verworfen, was ihm nahekommt. Bleibt dabei fast nichts übrig, wird
+   ohne Abzug gezählt: Ein schwarzes Hemd auf schwarzem Grund soll nicht als
+   leeres Bild enden.
+3. **Mitte gewichten.** Wer ein Teil fotografiert, hält es in die Mitte. Was
+   am Rand liegt, zählt weniger.
+4. **In Lab vergleichen.** Nicht in RGB — dort liegt ein warmes Grau näher
+   an Braun als an Grau. Lab ist so gebaut, dass Abstände ungefähr dem
+   entsprechen, was das Auge als Unterschied sieht.
+
+Vorgeschlagen wird nur, was deutlich ist: eine Farbe ab 35 % Flächenanteil,
+eine zweite ab 25 %, und „gemustert", wenn kein Ton das Bild trägt, aber
+mindestens drei deutlich vorkommen. Sonst steht da nichts. Ein falsch
+gesetztes Grün, das niemand bemerkt, ist schlimmer als gar keine Angabe: Es
+steht danach in den Daten, geht in die gelernten Vorlieben ein und erklärt
+sich nie.
+
+## Warum die Art des Teils nicht aus dem Bild kommt
+
+Die naheliegende Frage ist, warum die App nicht auch erkennt, *dass* das ein
+Hemd ist. Drei Wege gäbe es, und alle drei kosten mehr, als sie bringen:
+
+- **Ein gelerntes Modell mitliefern.** Machbar, aber es lädt fünf bis
+  zwanzig Megabyte ins Gerät und trifft bei Kleidung trotzdem oft daneben —
+  die gängigen Modelle unterscheiden „Pullover" und „Sweatshirt" nicht, und
+  ein Hemd auf einem Bügel ist für sie etwas anderes als eines auf dem Bett.
+  Die App wäre langsamer, größer und läge trotzdem regelmäßig falsch.
+- **Einen Bilddienst im Netz fragen.** Das widerspricht dem, wofür diese App
+  gebaut ist: Es würde jedes Foto aus dem Schrank an einen fremden Server
+  schicken. Dazu bräuchte es einen Schlüssel, der bezahlt wird und abläuft,
+  und einen eigenen Server, um ihn zu verstecken.
+- **Im Netz abgleichen wie beim Barcode.** Beim Küchenvorrat nebenan
+  funktioniert das, weil ein Barcode eine eindeutige Nummer ist und es dazu
+  eine freie Datenbank gibt. Für ein Foto von Kleidung gibt es beides nicht
+  — keine eindeutige Kennung und keinen frei nutzbaren Dienst ohne Schlüssel
+  und Kosten.
+
+Der Name leistet dasselbe zuverlässiger und kostet einen Fingertipp:
+„Wollpullover grau" ist getippt, bevor ein Modell geladen wäre, und die
+Zuordnung stimmt. Deshalb liest die App aus dem Bild nur das, was dort
+wirklich eindeutig steht — die Farbe — und aus dem Namen den Rest.
+
 ## Wie das Lernen funktioniert
 
 Jedes bewertete Outfit wird in eine Handvoll Merkmale zerlegt — Farben,
@@ -165,6 +230,7 @@ nichts über den Rest.
 | `js/model.js` | Kleidungsstücke, Outfits, Bewertungen |
 | `js/storage.js` | Persistenz, weiches Löschen, Zusammenführen zweier Stände |
 | `js/photos.js` | Fotos: verkleinern und in IndexedDB ablegen |
+| `js/colorvision.js` | Die Farbe aus dem Foto auszählen |
 | `js/slots.js` | Fach, Wärme, Anlass und Farbe aus dem Namen ablesen |
 | `js/outfit.js` | Kombinationen bauen und bewerten |
 | `js/preferences.js` | Die gelernten Stilvorlieben |
