@@ -100,7 +100,7 @@ import {
  * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer in `sw.js`
  * mitziehen. Ein Test wacht darüber, dass beide übereinstimmen.
  */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 
 /** Wie viele Wochen die Balken auf der Fortschrittsseite zeigen. */
 const WOCHEN = 8;
@@ -170,6 +170,18 @@ const icon = (name, klasse = 'icon') => {
   svg.append(use);
   return svg;
 };
+
+/** Das gezeichnete Zeichen einer Muskelgruppe. */
+const muscleIcon = (muscleId, klasse = 'icon') => icon(muscleById(muscleId).symbol, klasse);
+
+/** Zeichen und Name nebeneinander -- für Knöpfe und Überschriften. */
+const muscleLabel = (muscleId, klasse = 'with-icon') =>
+  el(
+    'span',
+    { class: klasse },
+    muscleIcon(muscleId, 'icon icon-sm'),
+    el('span', { text: muscleById(muscleId).label }),
+  );
 
 let toastTimer;
 function toast(message) {
@@ -813,58 +825,66 @@ function renderPlanForm() {
   renderPlanResults();
 }
 
-/** Die Übungen, die sich noch hinzufügen lassen. */
+/**
+ * Die Übungen, die sich noch in den Plan hängen lassen -- vollständig.
+ *
+ * Vollständig ist hier der Punkt: Wer einen Plan zusammenstellt, weiß oft
+ * nicht, wie die Übung heißt, die er meint -- er erkennt sie, wenn er sie
+ * sieht. Deshalb steht ohne Suche alles da, nach Muskelgruppen sortiert,
+ * und die Liste scrollt in sich selbst. Der Name des Plans und das, was
+ * schon drinsteht, bleiben dabei oben stehen.
+ */
 function renderPlanResults() {
   const gewaehlt = state.plan.exerciseIds;
   const uebrig = exercises().filter((exercise) => !gewaehlt.includes(exercise.id));
   const suche = state.plan.search.trim();
 
-  const treffer = suche
+  const reihenfolge = new Map(MUSCLES.map((muskel, i) => [muskel.id, i]));
+  const eigene = suche
     ? searchExercises(suche, uebrig)
     : [...uebrig].sort(
         (a, b) =>
-          (b.lastDoneAt ?? '').localeCompare(a.lastDoneAt ?? '') ||
+          (reihenfolge.get(a.muscle) ?? 99) - (reihenfolge.get(b.muscle) ?? 99) ||
           a.name.localeCompare(b.name, 'de'),
       );
 
+  // Was noch nicht im Verzeichnis steht, aber in der Liste: wird beim
+  // Antippen angelegt und gleich in den Plan gehängt.
+  const ausListe = katalogTreffer(suche, 40);
+
+  const auswaehlen = (exercise) => {
+    state.plan.exerciseIds = [...state.plan.exerciseIds, exercise.id];
+    // Die Suche bleibt stehen: Wer "bank" getippt hat, will meistens noch
+    // eine zweite Bankübung dazunehmen.
+    renderPlanForm();
+  };
+
   setChildren(
     $('#plan-results'),
-    ...treffer.slice(0, 8).map((exercise) =>
+    eigene.length ? el('p', { class: 'list-head', text: 'Deine Übungen' }) : null,
+    ...eigene.map((exercise) =>
       el(
         'button',
-        {
-          type: 'button',
-          class: 'row-item',
-          onclick: () => {
-            state.plan.exerciseIds = [...gewaehlt, exercise.id];
-            state.plan.search = '';
-            $('#plan-search').value = '';
-            renderPlanForm();
-          },
-        },
-        el('span', { class: 'row-emoji', text: muscleById(exercise.muscle).icon }),
+        { type: 'button', class: 'row-item', onclick: () => auswaehlen(exercise) },
+        el('span', { class: 'row-emoji' }, muscleIcon(exercise.muscle)),
         el(
           'span',
           { class: 'row-main' },
           el('span', { class: 'row-title', text: exercise.name }),
-          el('span', { class: 'row-sub', text: muscleById(exercise.muscle).label }),
+          el('span', {
+            class: 'row-sub',
+            text: `${muscleById(exercise.muscle).label} · ${equipmentById(exercise.equipment).label}`,
+          }),
         ),
         el('span', { class: 'row-right' }, icon('i-plus')),
       ),
     ),
-    // Was noch nicht im Verzeichnis steht, aber in der Liste: wird beim
-    // Antippen angelegt und gleich in den Plan gehängt.
-    ...katalogTreffer(suche, treffer.length ? 4 : 8).map((name) =>
-      katalogZeile(name, (neu) => {
-        state.plan.exerciseIds = [...state.plan.exerciseIds, neu.id];
-        state.plan.search = '';
-        $('#plan-search').value = '';
-        renderPlanForm();
-      }),
-    ),
+
+    ausListe.length ? el('p', { class: 'list-head', text: 'Aus der Liste' }) : null,
+    ...ausListe.map((name) => katalogZeile(name, (neu) => auswaehlen(neu))),
 
     // Und wenn weder Verzeichnis noch Liste etwas hergeben: selbst anlegen.
-    suche && !treffer.length && !katalogTreffer(suche).length
+    suche && !eigene.length && !ausListe.length
       ? el(
           'button',
           {
@@ -969,7 +989,7 @@ function renderExercises() {
       return el(
         'button',
         { type: 'button', class: 'row-item', onclick: () => openExerciseDetail(exercise.id) },
-        el('span', { class: 'row-emoji', text: muscleById(exercise.muscle).icon }),
+        el('span', { class: 'row-emoji' }, muscleIcon(exercise.muscle)),
         el(
           'span',
           { class: 'row-main' },
@@ -1014,13 +1034,17 @@ function renderMuscleFilter(alle) {
       onclick: () => setMuscleFilter(null),
     }),
     ...MUSCLES.filter((muskel) => belegt.has(muskel.id)).map((muskel) =>
-      el('button', {
-        type: 'button',
-        class: 'chip',
-        text: `${muskel.icon} ${muskel.label}`,
-        'aria-pressed': String(state.muscleFilter === muskel.id),
-        onclick: () => setMuscleFilter(muskel.id),
-      }),
+      el(
+        'button',
+        {
+          type: 'button',
+          class: 'chip',
+          'aria-pressed': String(state.muscleFilter === muskel.id),
+          onclick: () => setMuscleFilter(muskel.id),
+        },
+        muscleIcon(muskel.id, 'icon icon-sm'),
+        el('span', { text: muskel.label }),
+      ),
     ),
   );
 }
@@ -1066,7 +1090,7 @@ function katalogZeile(name, weiter) {
         if (neu) await weiter(neu);
       },
     },
-    el('span', { class: 'row-emoji', text: muscleById(geraten.muscle).icon }),
+    el('span', { class: 'row-emoji' }, muscleIcon(geraten.muscle)),
     el(
       'span',
       { class: 'row-main' },
@@ -1110,7 +1134,7 @@ function renderCatalog() {
       el(
         'div',
         { class: 'stack-tight' },
-        el('h3', { text: `${muskel.icon} ${muskel.label}` }),
+        muscleLabel(muskel.id, 'group-head'),
         el(
           'div',
           { class: 'chips' },
@@ -1406,7 +1430,7 @@ function renderMuscleShares() {
           el(
             'div',
             { class: 'share-row' },
-            el('span', { class: 'share-label', text: `${muscleById(muscle).icon} ${muscleById(muscle).label}` }),
+            muscleLabel(muscle, 'share-label with-icon'),
             el('span', { class: 'share-track' }, el('span', { class: 'share-fill', style: `width:${Math.round(share * 100)}%` })),
             el('span', { class: 'share-value', text: `${Math.round(share * 100)} %` }),
           ),
@@ -1509,7 +1533,7 @@ function renderLogResults() {
       return el(
         'button',
         { type: 'button', class: 'row-item', onclick: () => chooseExercise(exercise.id) },
-        el('span', { class: 'row-emoji', text: muscleById(exercise.muscle).icon }),
+        el('span', { class: 'row-emoji' }, muscleIcon(exercise.muscle)),
         el(
           'span',
           { class: 'row-main' },
