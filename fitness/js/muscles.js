@@ -43,7 +43,7 @@ export const MUSCLES = [
     icon: '🦅',
     keywords: [
       'klimmzug', 'klimmzuege', 'pullup', 'pullups', 'chinup', 'latzug', 'lat',
-      'rudern', 'row', 'langhantelrudern', 'kabelrudern', 'tbar', 'facepull',
+      'rudern', 'row', 'langhantelrudern', 'kabelrudern', 'tbar',
       'reversebutterfly', 'hyperextension', 'ruecken', 'kreuzheben', 'deadlift',
       'shrugs', 'nackenziehen',
     ],
@@ -56,6 +56,9 @@ export const MUSCLES = [
       'schulterdruecken', 'schulterpresse', 'militarypress', 'overheadpress',
       'nackendruecken', 'seitheben', 'frontheben', 'arnolddruecken', 'upright',
       'schulter', 'delt', 'delts',
+      // Face Pulls ziehen zwar den oberen Rücken mit, gemacht werden sie für
+      // die hintere Schulter -- und dort werden sie auch gezählt.
+      'facepull', 'facepulls',
     ],
   },
   {
@@ -157,7 +160,10 @@ const KOERPER_UEBUNGEN = [
 /** Übungen, bei denen eine Zeit zählt und keine Wiederholung. */
 const ZEIT_UEBUNGEN = [
   'planke', 'plank', 'unterarmstuetz', 'seitstuetz', 'hollow', 'wandsitz',
-  'haengen', 'deadhang', 'farmerswalk',
+  // Bewusst nur die englische Schreibweise: Am deutschen "hängen" bliebe
+  // sonst "Beinheben hängend" kleben, und aus Wiederholungen würden
+  // gehaltene Sekunden.
+  'deadhang', 'farmerswalk',
 ];
 
 /**
@@ -217,6 +223,20 @@ export function guessMuscle(name) {
  * Antwort und die, bei der eine falsche Annahme am wenigsten Schaden
  * anrichtet: 2,5 kg Schritte gehen überall.
  */
+/**
+ * Übungen, deren Gerät im Namen nicht steht, aber trotzdem feststeht.
+ *
+ * Seitheben macht niemand mit der Langhantel, und ein Hammercurl heißt so,
+ * weil die Kurzhantel wie ein Hammer gehalten wird. Ohne diese Liste liefen
+ * sie als Langhantelübungen und bekämen 2,5-kg-Schritte vorgeschlagen -- an
+ * einer 8-kg-Kurzhantel ist das ein Drittel mehr Gewicht.
+ */
+const FESTES_GERAET = [
+  ['kurzhantel', ['seitheben', 'frontheben', 'hammercurl', 'hammercurls', 'kickback', 'konzentrationscurl', 'arnolddruecken']],
+  ['kabel', ['facepull', 'facepulls']],
+  ['maschine', ['wadenheben']],
+];
+
 export function guessEquipment(name) {
   const ganz = normalize(name).replace(/ /g, '');
 
@@ -229,6 +249,11 @@ export function guessEquipment(name) {
   if (ganz.includes('kabel') || ganz.includes('block') || ganz.includes('seil')) return 'kabel';
   if (ganz.includes('kettlebell') || ganz.includes('kugelhantel')) return 'kettlebell';
   if (trifft(name, KOERPER_UEBUNGEN) || trifft(name, ZEIT_UEBUNGEN)) return 'koerper';
+
+  for (const [geraet, stichwoerter] of FESTES_GERAET) {
+    if (trifft(name, stichwoerter)) return geraet;
+  }
+
   if (
     ganz.includes('maschine') ||
     ganz.includes('presse') ||
@@ -279,44 +304,44 @@ export function guessAttributes(name, given = {}) {
 }
 
 /**
- * Ein Vorrat gängiger Übungen für den leeren Anfang.
+ * Der Vorrat gängiger Übungen -- das, was in einem gewöhnlichen Studio
+ * tatsächlich gemacht wird.
  *
  * Nur Namen: Muskelgruppe, Gerät und Art fallen aus demselben Erraten
  * heraus wie bei allem, was von Hand eingetippt wird. Eine zweite,
  * gepflegte Liste mit fertigen Angaben würde bei jeder Änderung am Erraten
- * auseinanderlaufen -- und niemand merkte es.
+ * auseinanderlaufen -- und niemand merkte es. Ein Test geht die Liste
+ * deshalb durch und hält fest, was dabei herauskommen muss.
  */
 export const CATALOG = [
   'Bankdrücken',
-  'Schrägbankdrücken KH',
-  'Butterfly',
-  'Liegestütze',
+  'Schrägbankdrücken',
+  'Kurzhantel Bankdrücken',
+  'Kurzhantel Schrägbankdrücken',
+  'Butterfly / Fliegende',
   'Dips',
   'Klimmzüge',
   'Latzug',
-  'Langhantelrudern',
-  'Kabelrudern',
-  'Face Pull',
+  'Rudern vorgebeugt (Langhantel)',
+  'Kabelrudern sitzend',
   'Kreuzheben',
-  'Schulterdrücken',
-  'Seitheben KH',
-  'Frontheben KH',
-  'Bizepscurls KH',
+  'Schulterdrücken (Langhantel)',
+  'Kurzhantel Schulterdrücken',
+  'Seitheben',
+  'Frontheben',
+  'Face Pulls',
+  'Bizepscurls (Langhantel)',
+  'Kurzhantel Bizepscurls',
   'Hammercurls',
-  'Trizepsdrücken Kabel',
+  'Trizepsdrücken am Kabel',
   'French Press',
   'Kniebeugen',
-  'Frontkniebeuge',
-  'Beinpresse',
+  '45-Grad Beinpresse',
   'Beinstrecker',
   'Beinbeuger',
-  'Rumänisches Kreuzheben',
   'Ausfallschritte',
   'Wadenheben',
-  'Hip Thrust',
-  'Planke',
-  'Beinheben',
   'Crunches',
-  'Kettlebell Swing',
-  'Burpees',
+  'Plank',
+  'Beinheben hängend',
 ];

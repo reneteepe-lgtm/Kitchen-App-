@@ -26,6 +26,12 @@ App.
   weiteres Zutun zu einer Brustübung mit der Kurzhantel in 2-kg-Schritten.
   Was nicht stimmt, lässt sich in einem Aufklapper korrigieren — und eine
   einmal von Hand gesetzte Angabe wird nie wieder überstimmt.
+- **Oder aus der Liste wählen** — unter *Übungen* liegen dreißig gängige
+  Übungen nach Muskelgruppen sortiert: antippen, hinzufügen, fertig.
+  Angelegt wird nur, was angetippt wurde; ein Verzeichnis voller Übungen,
+  die niemand macht, macht jede Suche länger und jede Auswertung unschärfer.
+  Was schon dabei ist, steht abgehakt da und lässt sich nicht doppelt
+  anlegen.
 - **Wissen, was heute drankommt** — nach der Regel, die in jedem
   Anfängerplan steht: alle Sätze am Ziel, also mehr Gewicht. Dazu ein Satz,
   warum („Letztes Mal alle 3 Sätze mit 8 Wdh. — leg 2,5 kg drauf").
