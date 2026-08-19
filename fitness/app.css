@@ -838,8 +838,11 @@ button {
 }
 
 .row-emoji {
+  display: grid;
+  place-items: center;
   font-size: 20px;
   line-height: 1;
+  color: var(--text-dim);
   flex: none;
 }
 
@@ -931,6 +934,32 @@ button {
 .tag-accent {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+/* Kleine Überschrift in einer Trefferliste. */
+.list-head {
+  padding: 6px 4px 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
 }
 
 /* --- Diagramme --------------------------------------------------------- */
@@ -1164,6 +1193,19 @@ button {
   color: var(--accent);
 }
 
+/*
+ * Die Übungsliste im Plan-Dialog scrollt in sich selbst. Ohne das schöbe
+ * eine Liste mit dreißig Einträgen den Plannamen und die schon gewählten
+ * Übungen aus dem Bild -- und man wüsste beim Aussuchen nicht mehr, was
+ * man schon hat.
+ */
+#plan-results {
+  max-height: 44vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
 .today-sets {
   display: flex;
   flex-direction: column;
@@ -1220,6 +1262,9 @@ button {
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);

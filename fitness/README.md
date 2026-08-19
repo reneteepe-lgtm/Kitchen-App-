@@ -167,8 +167,13 @@ Startseite.
 
 Drei Wege führen zu einem Plan:
 
-- **Zusammenstellen** — „Neuer Plan", Name, Übungen suchen und antippen, die
-  Reihenfolge mit den Pfeilen sortieren.
+- **Zusammenstellen** — „Neuer Plan", Name, Übungen antippen, die
+  Reihenfolge mit den Pfeilen sortieren. Ohne Suche stehen dort **alle**
+  Übungen: zuerst die eigenen nach Muskelgruppen sortiert, darunter die aus
+  der Liste. Das ist Absicht — wer einen Plan baut, weiß oft nicht, wie die
+  Übung heißt, die er meint, aber er erkennt sie, wenn er sie sieht. Die
+  Liste scrollt dabei in sich selbst, damit Plannname und schon Gewähltes
+  oben stehen bleiben; die Suche bleibt nach jedem Antippen stehen.
 - **Aus einem gelaufenen Training** — im Verlauf eine Einheit öffnen und
   **Als Plan speichern**. Der bequemste Weg: einmal trainieren und danach
   sagen „so wieder".

@@ -17,7 +17,7 @@
  * dass der Browser diese Datei als geändert erkennt, den neuen Worker
  * installiert und der alte Cache verworfen wird.
  */
-const CACHE = 'training-v1.3.0';
+const CACHE = 'training-v1.4.0';
 
 const SHELL = [
   './',

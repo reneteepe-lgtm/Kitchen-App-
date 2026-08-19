@@ -25,12 +25,19 @@ import { normalize, words } from './text.js';
  * Die Muskelgruppen, in der Reihenfolge, in der Trainingspläne sie
  * gewöhnlich aufführen: erst die großen Gruppen des Oberkörpers, dann die
  * Arme, dann die Beine, dann der Rumpf.
+ *
+ * `symbol` verweist auf ein gezeichnetes Zeichen in `index.html`. Emoji
+ * standen hier zuerst und mussten weichen: Für "Brust" gibt es keines, das
+ * Brust bedeutet -- die Lunge war die am wenigsten falsche Notlösung, und
+ * gemeint war sie nie. Gezeigt wird jetzt, woran man die Gruppe erkennt:
+ * die Bank, die Figur von hinten, die Schulterpartie, die Curlstange, das
+ * Bein, der Rumpf, die ganze Figur.
  */
 export const MUSCLES = [
   {
     id: 'brust',
     label: 'Brust',
-    icon: '🫁',
+    symbol: 'i-m-brust',
     keywords: [
       'bankdruecken', 'bank', 'bench', 'schraegbank', 'negativbank', 'butterfly',
       'fliegende', 'chestpress', 'brustpresse', 'liegestuetz', 'liegestuetze',
@@ -40,7 +47,7 @@ export const MUSCLES = [
   {
     id: 'ruecken',
     label: 'Rücken',
-    icon: '🦅',
+    symbol: 'i-m-ruecken',
     keywords: [
       'klimmzug', 'klimmzuege', 'pullup', 'pullups', 'chinup', 'latzug', 'lat',
       'rudern', 'row', 'langhantelrudern', 'kabelrudern', 'tbar',
@@ -51,7 +58,7 @@ export const MUSCLES = [
   {
     id: 'schultern',
     label: 'Schultern',
-    icon: '🏋️',
+    symbol: 'i-m-schultern',
     keywords: [
       'schulterdruecken', 'schulterpresse', 'militarypress', 'overheadpress',
       'nackendruecken', 'seitheben', 'frontheben', 'arnolddruecken', 'upright',
@@ -64,7 +71,7 @@ export const MUSCLES = [
   {
     id: 'arme',
     label: 'Arme',
-    icon: '💪',
+    symbol: 'i-m-arme',
     keywords: [
       'bizeps', 'curl', 'curls', 'hammercurl', 'scottcurl', 'konzentrationscurl',
       'trizeps', 'trizepsdruecken', 'frenchpress', 'kickback', 'unterarm',
@@ -74,7 +81,7 @@ export const MUSCLES = [
   {
     id: 'beine',
     label: 'Beine',
-    icon: '🦵',
+    symbol: 'i-m-beine',
     keywords: [
       'kniebeuge', 'kniebeugen', 'squat', 'squats', 'frontkniebeuge', 'beinpresse',
       'legpress', 'beinstrecker', 'beinbeuger', 'ausfallschritt', 'ausfallschritte',
@@ -85,7 +92,7 @@ export const MUSCLES = [
   {
     id: 'rumpf',
     label: 'Rumpf',
-    icon: '🧍',
+    symbol: 'i-m-rumpf',
     keywords: [
       'planke', 'plank', 'unterarmstuetz', 'seitstuetz', 'crunch', 'crunches',
       'situp', 'situps', 'beinheben', 'russiantwist', 'kaefer', 'deadbug',
@@ -95,7 +102,7 @@ export const MUSCLES = [
   {
     id: 'ganzkoerper',
     label: 'Ganzkörper',
-    icon: '🤸',
+    symbol: 'i-m-ganzkoerper',
     keywords: [
       'burpee', 'burpees', 'clean', 'umsetzen', 'snatch', 'reissen', 'thruster',
       'kettlebellswing', 'swing', 'farmerswalk', 'schlittenschieben',
