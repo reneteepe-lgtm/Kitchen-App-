@@ -100,7 +100,7 @@ import {
  * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer in `sw.js`
  * mitziehen. Ein Test wacht darüber, dass beide übereinstimmen.
  */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 /** Wie viele Wochen die Balken auf der Fortschrittsseite zeigen. */
 const WOCHEN = 8;
@@ -852,8 +852,19 @@ function renderPlanResults() {
         el('span', { class: 'row-right' }, icon('i-plus')),
       ),
     ),
-    // Eine Übung, die es noch nicht gibt, hält den Plan nicht auf.
-    suche && !treffer.length
+    // Was noch nicht im Verzeichnis steht, aber in der Liste: wird beim
+    // Antippen angelegt und gleich in den Plan gehängt.
+    ...katalogTreffer(suche, treffer.length ? 4 : 8).map((name) =>
+      katalogZeile(name, (neu) => {
+        state.plan.exerciseIds = [...state.plan.exerciseIds, neu.id];
+        state.plan.search = '';
+        $('#plan-search').value = '';
+        renderPlanForm();
+      }),
+    ),
+
+    // Und wenn weder Verzeichnis noch Liste etwas hergeben: selbst anlegen.
+    suche && !treffer.length && !katalogTreffer(suche).length
       ? el(
           'button',
           {
@@ -1017,6 +1028,56 @@ function renderMuscleFilter(alle) {
 function setMuscleFilter(id) {
   state.muscleFilter = id;
   renderExercises();
+}
+
+/**
+ * Übungen aus dem Vorrat, die es im Verzeichnis noch nicht gibt.
+ *
+ * Damit sich beides mit derselben Suche finden lässt: Wer beim
+ * Zusammenstellen eines Plans „seit" tippt, meint das Seitheben -- ob es
+ * schon angelegt ist oder nicht, ist eine Frage der App und nicht seine.
+ */
+function katalogTreffer(suche, limit = 6) {
+  const vorhanden = new Set(exercisesRaw().map((exercise) => normalize(exercise.name)));
+  const uebrig = CATALOG.filter((name) => !vorhanden.has(normalize(name))).map((name) => ({ name }));
+
+  const treffer = suche ? searchExercises(suche, uebrig) : uebrig;
+  return treffer.slice(0, limit).map((eintrag) => eintrag.name);
+}
+
+/**
+ * Eine Zeile für eine Übung, die es noch nicht gibt.
+ *
+ * Angelegt wird sie erst beim Antippen -- und dann sofort und ohne
+ * Zwischenschritt: Der Weg über „erst anlegen, dann suchen, dann
+ * hinzufügen" ist genau der, den man mitten im Zusammenstellen nicht gehen
+ * will.
+ */
+function katalogZeile(name, weiter) {
+  const geraten = guessAttributes(name);
+
+  return el(
+    'button',
+    {
+      type: 'button',
+      class: 'row-item',
+      onclick: async () => {
+        const [neu] = await addExercises(store, [name]);
+        if (neu) await weiter(neu);
+      },
+    },
+    el('span', { class: 'row-emoji', text: muscleById(geraten.muscle).icon }),
+    el(
+      'span',
+      { class: 'row-main' },
+      el('span', { class: 'row-title', text: name }),
+      el('span', {
+        class: 'row-sub',
+        text: `Aus der Liste · ${muscleById(geraten.muscle).label} · ${equipmentById(geraten.equipment).label}`,
+      }),
+    ),
+    el('span', { class: 'row-right' }, icon('i-plus')),
+  );
 }
 
 /**
@@ -1429,9 +1490,17 @@ function renderLogResults() {
     ? searchExercises(suche, alle)
     : recentExercises(sets(), alle, 12).map((eintrag) => eintrag.exercise);
 
-  const vorschlaege = treffer.length
+  /*
+   * Bei einer Suche ohne Treffer bleibt die Liste leer -- was der Vorrat
+   * darunter hergibt, ist dann die Antwort. Früher stand hier ersatzweise
+   * das ganze Verzeichnis, und wer "klimm" tippte, bekam als erste Zeile
+   * das Bankdrücken angeboten.
+   */
+  const vorschlaege = suche
     ? treffer
-    : [...alle].sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    : treffer.length
+      ? treffer
+      : [...alle].sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
   setChildren(
     $('#log-results'),
@@ -1454,6 +1523,16 @@ function renderLogResults() {
         ),
       );
     }),
+    // Dasselbe im Eingabedialog: Was in der Liste steht, ist einen Tipp
+    // entfernt und muss nicht erst angelegt werden.
+    ...katalogTreffer(suche, suche ? 4 : 3).map((name) =>
+      katalogZeile(name, (neu) => {
+        state.log.search = '';
+        $('#log-search').value = '';
+        chooseExercise(neu.id);
+      }),
+    ),
+
     // Anlegen steht immer zur Verfügung, auch wenn es Treffer gibt: Man
     // sucht "Rudern", findet drei Ruderübungen -- und will trotzdem die
     // vierte anlegen. Und im leeren Verzeichnis ist es der einzige Weg
