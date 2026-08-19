@@ -16,6 +16,11 @@ App.
   steht schon drin, bevor man das Feld anfasst: Es ist der Vorschlag aus dem
   eigenen Verlauf. Drei Sätze sind dreimal derselbe Knopf, und der Dialog
   bleibt dabei offen.
+- **Trainingspläne** — mehrere Übungen in einer Reihenfolge, unter einem
+  Namen: Push, Pull, Beine. Auf der Startseite steht der Plan, der am
+  längsten nicht dran war, ganz vorn; ein Tipp auf **Training starten**
+  öffnet gleich die erste Übung. Was abgearbeitet ist, hakt sich von selbst
+  ab.
 - **Übungen anlegen, ohne Formulare auszufüllen** — Muskelgruppe, Gerät und
   Art liest die App aus dem Namen ab. „KH Schrägbankdrücken" wird ohne
   weiteres Zutun zu einer Brustübung mit der Kurzhantel in 2-kg-Schritten.
@@ -132,6 +137,38 @@ Zwei Sonderfälle hat die Regel:
 Der Vorschlag steht in den Eingabefeldern schon drin und lässt sich mit zwei
 Fingertipps überschreiben. Er ist ein Vorschlag, keine Vorschrift.
 
+## Was in einem Plan steht — und was nicht
+
+Ein Plan ist eine **Reihenfolge von Übungen** und sonst nichts. Kein
+Gewicht, keine Satzzahl, keine Wochentage.
+
+Das ist die wichtigste Entscheidung an der Stelle. Ein Plan, in dem
+„Bankdrücken 3 × 8 @ 60 kg" stünde, wäre nach zwei Wochen falsch — und dann
+gäbe es zwei Wahrheiten über dasselbe Training, eine im Plan und eine im
+Verlauf. So gibt es nur eine: Was heute drankommt, folgt aus dem, was
+zuletzt wirklich passiert ist. Auch die Satzzahl, an der die Abhakliste
+misst, kommt von dort — wer eine Übung einmal mit vier statt drei Sätzen
+macht, verschiebt damit nicht seinen Plan.
+
+Und deshalb stehen auch keine Wochentage darin. Wer dreimal die Woche Push,
+Pull und Beine macht, hält keinen Kalender ein — er nimmt den Plan, der am
+längsten nicht dran war. Genau in dieser Reihenfolge liegen sie auf der
+Startseite.
+
+Drei Wege führen zu einem Plan:
+
+- **Zusammenstellen** — „Neuer Plan", Name, Übungen suchen und antippen, die
+  Reihenfolge mit den Pfeilen sortieren.
+- **Aus einem gelaufenen Training** — im Verlauf eine Einheit öffnen und
+  **Als Plan speichern**. Der bequemste Weg: einmal trainieren und danach
+  sagen „so wieder".
+- **Gar nicht** — ohne Plan zeigt die Startseite wie bisher, was zuletzt
+  dran war. Pläne sind ein Angebot, keine Voraussetzung.
+
+Ein gelöschter Plan nimmt seine Trainings nicht mit: Was im März nach dem
+alten Plan lief, hat im März stattgefunden. Der Name bleibt deshalb an der
+Einheit stehen, auch wenn es den Plan nicht mehr gibt.
+
 ## Wie die Kraft geschätzt wird
 
 Aus jedem Satz lässt sich hochrechnen, was für eine einzige Wiederholung
@@ -182,6 +219,7 @@ dauerte nicht dreizehn Stunden.
 | `js/app.js` | Oberfläche: ein Zustand, ein Zeichenweg |
 | `js/model.js` | Übungen, Einheiten, Sätze |
 | `js/storage.js` | Persistenz, weiches Löschen, Zusammenführen zweier Stände |
+| `js/plans.js` | Trainingspläne, Reihenfolge und Rotation |
 | `js/muscles.js` | Muskelgruppe, Gerät und Art aus dem Namen ablesen |
 | `js/stats.js` | Bestwerte, Verläufe, Wochenvolumen, Serie |
 | `js/progression.js` | Der Vorschlag fürs nächste Mal |

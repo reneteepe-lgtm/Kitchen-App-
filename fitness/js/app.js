@@ -59,6 +59,18 @@ import {
   recentExercises,
   recentRecords,
 } from './stats.js';
+import {
+  addPlan,
+  updatePlan,
+  removePlan,
+  moveExercise,
+  planExercises,
+  plansByTurn,
+  planProgress,
+  planDone,
+  startPlan,
+  planFromSession,
+} from './plans.js';
 import { suggestNext, suggestForToday } from './progression.js';
 import { searchExercises } from './text.js';
 import { linePath, barLayout, ringDash } from './chart.js';
@@ -87,7 +99,7 @@ import {
  * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer in `sw.js`
  * mitziehen. Ein Test wacht darüber, dass beide übereinstimmen.
  */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 /** Wie viele Wochen die Balken auf der Fortschrittsseite zeigen. */
 const WOCHEN = 8;
@@ -187,6 +199,8 @@ const state = {
   log: { exerciseId: null, picking: true, search: '' },
   /** Die Übung, die gerade im Formular steht. */
   editing: null,
+  /** Der Plan, der gerade zusammengestellt wird. */
+  plan: { editing: null, exerciseIds: [], search: '' },
   detailExercise: null,
   detailSession: null,
   progress: { exerciseId: null, metric: 'e1rm' },
@@ -201,6 +215,7 @@ let restInterval;
 const exercisesRaw = () => store.all('exercises');
 const sets = () => store.all('sets');
 const sessions = () => store.all('sessions');
+const plans = () => store.all('plans');
 const exercises = () => withHistory(exercisesRaw(), sets());
 
 /** Auch gelöschte Übungen -- der Verlauf braucht ihre Namen. */
@@ -286,6 +301,7 @@ function wireEvents() {
   $('#open-progress').addEventListener('click', () => show('progress'));
   $('#btn-all-sessions').addEventListener('click', () => show('history'));
   $('#btn-new-exercise').addEventListener('click', () => openExerciseForm(null));
+  $('#btn-new-plan').addEventListener('click', () => openPlanForm(null));
   $('#btn-end-session').addEventListener('click', onEndSession);
 
   $('#exercise-search').addEventListener('input', (event) => {
@@ -315,6 +331,14 @@ function wireEvents() {
   for (const knopf of $$('[data-step]')) {
     knopf.addEventListener('click', () => stepField(knopf.dataset.step, Number(knopf.dataset.dir)));
   }
+
+  // Plan zusammenstellen
+  $('#plan-search').addEventListener('input', (event) => {
+    state.plan.search = event.target.value;
+    renderPlanResults();
+  });
+  $('#form-plan').addEventListener('submit', onPlanSubmit);
+  $('#btn-delete-plan').addEventListener('click', onDeletePlan);
 
   // Übung anlegen und ändern
   $('#exercise-name').addEventListener('input', updateGuessLine);
@@ -416,6 +440,7 @@ function renderHome() {
     : 'Jede Woche zählt für sich.';
 
   renderLive();
+  renderPlans();
   renderNextStrip();
   renderRecentSessions();
 }
@@ -429,6 +454,8 @@ function renderLive() {
   const eigene = setsOfSession(sets(), laufend.id);
   const summary = sessionSummary(laufend, sets(), exerciseMap(), bodyweight());
   const namen = exerciseMap();
+
+  $('#live-label').textContent = laufend.label ? `Läuft: ${laufend.label}` : 'Läuft gerade';
 
   setChildren(
     $('#live-stats'),
@@ -468,6 +495,16 @@ const stat = (wert, beschriftung) =>
  */
 function renderNextStrip() {
   const alleSaetze = sets();
+  const laufend = liveSession();
+  const plan = laufend?.planId ? store.byId('plans', laufend.planId) : null;
+
+  // Läuft ein Plan, beantwortet dasselbe Band eine andere Frage: nicht
+  // "was war zuletzt dran", sondern "was steht heute noch aus".
+  if (plan) return renderPlanStrip(plan, laufend, alleSaetze);
+
+  $('#next-title').textContent = 'Weiter wie geplant';
+  $('#next-sub').textContent = 'Was beim letzten Mal herauskam — und was heute drankommt.';
+
   const liste = recentExercises(alleSaetze, exercises(), 8);
 
   $('#next-empty').hidden = liste.length > 0;
@@ -480,6 +517,61 @@ function renderNextStrip() {
         'button',
         { type: 'button', class: 'next-card', onclick: () => openLog(exercise.id) },
         el('p', { class: 'eyebrow' }, el('span', { class: 'dot' }), el('span', { text: `${muscleById(exercise.muscle).label} · ${relativeDay(at)}` })),
+        el('h3', { text: exercise.name }),
+        el('p', { class: 'next-target', text: zielText(exercise, vorschlag) }),
+        el('p', { class: 'next-reason', text: vorschlag.reason }),
+      );
+    }),
+  );
+}
+
+/**
+ * Der laufende Plan als Abhakliste.
+ *
+ * Wie viele Sätze eine Übung braucht, steht nicht im Plan -- es sind so
+ * viele wie beim letzten Mal. Wer eine Übung einmal mit vier statt drei
+ * Sätzen macht, verschiebt damit nicht seinen Plan.
+ */
+function renderPlanStrip(plan, session, alleSaetze) {
+  const namen = exerciseMap();
+  const eigene = setsOfSession(alleSaetze, session.id);
+
+  const fortschritt = planProgress(plan, eigene, {
+    targetFor: (id) =>
+      suggestNext(
+        namen.get(id),
+        setsOfExercise(alleSaetze, id).filter((satz) => satz.sessionId !== session.id),
+      ).setCount,
+  });
+
+  const offen = fortschritt.filter((eintrag) => !eintrag.complete).length;
+  $('#next-title').textContent = plan.name || 'Trainingsplan';
+  $('#next-sub').textContent = planDone(fortschritt)
+    ? 'Plan abgearbeitet. Alles Weitere ist Zugabe.'
+    : `Noch ${plural(offen, 'Übung', 'Übungen')} — abgehakt wird von selbst.`;
+  $('#next-empty').hidden = true;
+
+  setChildren(
+    $('#next-strip'),
+    ...fortschritt.map((eintrag, i) => {
+      const exercise = namen.get(eintrag.exerciseId);
+      if (!exercise) return null;
+
+      const vorschlag = suggestForToday(
+        exercise,
+        setsOfExercise(alleSaetze, exercise.id),
+        session.id,
+      );
+
+      return el(
+        'button',
+        { type: 'button', class: 'next-card', onclick: () => openLog(exercise.id) },
+        el(
+          'p',
+          { class: 'eyebrow' },
+          eintrag.complete ? icon('i-check', 'icon icon-sm done-mark') : el('span', { class: 'dot' }),
+          el('span', { text: `${i + 1}. ${eintrag.done} von ${eintrag.target} Sätzen` }),
+        ),
         el('h3', { text: exercise.name }),
         el('p', { class: 'next-target', text: zielText(exercise, vorschlag) }),
         el('p', { class: 'next-reason', text: vorschlag.reason }),
@@ -532,6 +624,303 @@ function sessionRow(session) {
       el('span', { text: formatVolume(summary.volume, unit()) }),
     ),
   );
+}
+
+// --- Trainingspläne ------------------------------------------------------
+
+/**
+ * Das Planband auf der Startseite.
+ *
+ * Sortiert nach Rotation: Der Plan, der am längsten nicht dran war, steht
+ * vorn. Das ist keine Bevormundung, sondern die Reihenfolge, die man bei
+ * Push/Pull/Beine ohnehin im Kopf hat -- man muss sie nur nicht mehr im
+ * Kopf behalten.
+ */
+function renderPlans() {
+  const alle = plans();
+  const einheiten = sessions();
+  const laufend = liveSession();
+  const namen = exerciseMap();
+
+  // Läuft ein Plan, steht er als Abhakliste im Band darunter. Die Auswahl
+  // wäre dann nur im Weg.
+  $('#plans-section').hidden = Boolean(laufend?.planId);
+  $('#plans-empty').hidden = alle.length > 0;
+
+  const reihenfolge = plansByTurn(alle, einheiten);
+
+  $('#plans-sub').textContent = reihenfolge.length
+    ? `Dran wäre: ${reihenfolge[0].plan.name || 'der oberste'}`
+    : 'Zusammenstellen, antippen, loslegen.';
+
+  setChildren(
+    $('#plan-strip'),
+    ...reihenfolge.map(({ plan, lastUsedAt }, i) => {
+      const { exercises: uebungen, missing } = planExercises(plan, namen);
+
+      return el(
+        'div',
+        { class: 'plan-card' },
+        el(
+          'button',
+          { type: 'button', class: 'plan-card-main', onclick: () => openPlanForm(plan) },
+          el(
+            'p',
+            { class: 'eyebrow' },
+            el('span', { class: 'dot' }),
+            el('span', {
+              text:
+                i === 0 && alle.length > 1
+                  ? 'Jetzt dran'
+                  : lastUsedAt
+                    ? `Zuletzt ${relativeDay(lastUsedAt)}`
+                    : 'Noch nie trainiert',
+            }),
+          ),
+          el('h3', { text: plan.name || 'Ohne Namen' }),
+          el('p', {
+            class: 'plan-exercises',
+            text: uebungen.map((exercise) => exercise.name).join(' · ') || 'Noch keine Übung',
+          }),
+          missing
+            ? el('p', {
+                class: 'muted fineprint',
+                text: `${plural(missing, 'Übung ist', 'Übungen sind')} nicht mehr im Verzeichnis`,
+              })
+            : null,
+        ),
+        el(
+          'button',
+          { type: 'button', class: 'plan-start', onclick: () => onStartPlan(plan) },
+          'Training starten',
+        ),
+      );
+    }),
+  );
+}
+
+/**
+ * Einen Plan starten.
+ *
+ * Danach steht gleich die erste Übung im Eingabedialog: Wer im Studio auf
+ * "Training starten" tippt, steht vor der Bank und will nicht noch einmal
+ * suchen.
+ */
+async function onStartPlan(plan) {
+  const { exercises: uebungen } = planExercises(plan, exerciseMap());
+  if (!uebungen.length) {
+    toast('In diesem Plan steht noch keine Übung.');
+    openPlanForm(plan);
+    return;
+  }
+
+  let laufend = liveSession();
+
+  // Eine Einheit, in der schon etwas steht, wird nicht stillschweigend
+  // umgewidmet -- sonst stünde das Aufwärmen von vorhin plötzlich unter
+  // einem Plan, mit dem es nichts zu tun hat.
+  if (laufend && setsOfSession(sets(), laufend.id).length && laufend.planId !== plan.id) {
+    if (!confirm(`Es läuft schon ein Training. Soll es beendet und „${plan.name}" gestartet werden?`)) {
+      return;
+    }
+    await endSession(store, laufend.id);
+    stopRest();
+    laufend = null;
+  }
+
+  await startPlan(store, plan, { running: laufend });
+  show('home');
+  toast(`${plan.name} gestartet.`);
+  openLog(uebungen[0].id);
+}
+
+function openPlanForm(plan) {
+  state.plan = {
+    editing: plan?.id ?? null,
+    exerciseIds: [...(plan?.exerciseIds ?? [])],
+    search: '',
+  };
+
+  $('#plan-form-title').textContent = plan ? 'Plan ändern' : 'Neuer Plan';
+  $('#plan-name').value = plan?.name ?? '';
+  $('#plan-search').value = '';
+  $('#plan-danger').hidden = !plan;
+
+  renderPlanForm();
+  $('#dlg-plan').showModal();
+  if (!plan) $('#plan-name').focus();
+}
+
+function renderPlanForm() {
+  const namen = exerciseMap();
+  const gewaehlt = state.plan.exerciseIds;
+
+  $('#plan-chosen-head').textContent = gewaehlt.length
+    ? `${plural(gewaehlt.length, 'Übung', 'Übungen')} im Plan — in dieser Reihenfolge:`
+    : 'Noch keine Übung im Plan. Such sie unten und tippe sie an.';
+
+  setChildren(
+    $('#plan-chosen'),
+    ...gewaehlt.map((id, i) => {
+      const exercise = namen.get(id);
+      return el(
+        'div',
+        { class: 'plan-step' },
+        el('span', { class: 'set-number', text: String(i + 1) }),
+        el('span', { class: 'plan-step-name', text: exercise?.name ?? 'Entfernte Übung' }),
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'icon-button-mini',
+            'aria-label': 'Weiter nach vorn',
+            onclick: () => movePlanStep(id, -1),
+          },
+          icon('i-up'),
+        ),
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'icon-button-mini',
+            'aria-label': 'Weiter nach hinten',
+            onclick: () => movePlanStep(id, 1),
+          },
+          icon('i-down'),
+        ),
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'icon-button-mini',
+            'aria-label': 'Aus dem Plan nehmen',
+            onclick: () => {
+              state.plan.exerciseIds = gewaehlt.filter((eintrag) => eintrag !== id);
+              renderPlanForm();
+            },
+          },
+          icon('i-cross'),
+        ),
+      );
+    }),
+  );
+
+  renderPlanResults();
+}
+
+/** Die Übungen, die sich noch hinzufügen lassen. */
+function renderPlanResults() {
+  const gewaehlt = state.plan.exerciseIds;
+  const uebrig = exercises().filter((exercise) => !gewaehlt.includes(exercise.id));
+  const suche = state.plan.search.trim();
+
+  const treffer = suche
+    ? searchExercises(suche, uebrig)
+    : [...uebrig].sort(
+        (a, b) =>
+          (b.lastDoneAt ?? '').localeCompare(a.lastDoneAt ?? '') ||
+          a.name.localeCompare(b.name, 'de'),
+      );
+
+  setChildren(
+    $('#plan-results'),
+    ...treffer.slice(0, 8).map((exercise) =>
+      el(
+        'button',
+        {
+          type: 'button',
+          class: 'row-item',
+          onclick: () => {
+            state.plan.exerciseIds = [...gewaehlt, exercise.id];
+            state.plan.search = '';
+            $('#plan-search').value = '';
+            renderPlanForm();
+          },
+        },
+        el('span', { class: 'row-emoji', text: muscleById(exercise.muscle).icon }),
+        el(
+          'span',
+          { class: 'row-main' },
+          el('span', { class: 'row-title', text: exercise.name }),
+          el('span', { class: 'row-sub', text: muscleById(exercise.muscle).label }),
+        ),
+        el('span', { class: 'row-right' }, icon('i-plus')),
+      ),
+    ),
+    // Eine Übung, die es noch nicht gibt, hält den Plan nicht auf.
+    suche && !treffer.length
+      ? el(
+          'button',
+          {
+            type: 'button',
+            class: 'row-item',
+            onclick: () => {
+              $('#dlg-plan').close();
+              openExerciseForm(null, suche);
+            },
+          },
+          el('span', { class: 'row-emoji' }, icon('i-plus', 'icon')),
+          el(
+            'span',
+            { class: 'row-main' },
+            el('span', { class: 'row-title', text: `„${suche}" anlegen` }),
+            el('span', { class: 'row-sub', text: 'danach steht sie hier zur Auswahl' }),
+          ),
+        )
+      : null,
+  );
+}
+
+function movePlanStep(id, richtung) {
+  state.plan.exerciseIds = moveExercise(state.plan.exerciseIds, id, richtung);
+  renderPlanForm();
+}
+
+async function onPlanSubmit(event) {
+  const name = $('#plan-name').value.trim();
+
+  if (!name) {
+    event.preventDefault();
+    return;
+  }
+  if (!state.plan.exerciseIds.length) {
+    event.preventDefault();
+    toast('Ein Plan braucht mindestens eine Übung.');
+    return;
+  }
+
+  const angaben = { name, exerciseIds: state.plan.exerciseIds };
+
+  if (state.plan.editing) {
+    await updatePlan(store, state.plan.editing, angaben);
+    toast('Plan geändert.');
+  } else {
+    await addPlan(store, angaben);
+    toast(`„${name}" angelegt.`);
+  }
+
+  state.plan.editing = null;
+}
+
+async function onDeletePlan() {
+  const plan = state.plan.editing ? store.byId('plans', state.plan.editing) : null;
+  if (!plan) return;
+
+  if (!confirm(`„${plan.name}" löschen? Die Trainings, die danach gelaufen sind, bleiben im Verlauf stehen.`)) {
+    return;
+  }
+
+  await removePlan(store, plan.id);
+  state.plan.editing = null;
+  $('#dlg-plan').close();
+  toast('Plan gelöscht.');
+}
+
+/** Ein Vorschlag für den Namen eines Plans aus einer gelaufenen Einheit. */
+function planNameSuggestion(exerciseIds, namen) {
+  const gruppen = [...new Set(exerciseIds.map((id) => namen.get(id)?.muscle).filter(Boolean))];
+  if (!gruppen.length) return 'Neuer Plan';
+  return gruppen.slice(0, 2).map((id) => muscleById(id).label).join(' & ');
 }
 
 // --- Übungen -------------------------------------------------------------
@@ -1143,6 +1532,19 @@ async function onLogSubmit(event) {
   }
 
   const gewicht = fromDisplay(parseNumber($('#log-weight').value) ?? 0, unit());
+
+  /*
+   * Ein Hantelsatz ohne Gewicht ist keine Leistung, sondern ein leeres
+   * Feld: Er stünde als "0 kg × 8" im Verlauf und zöge jedes Volumen nach
+   * unten. Bei Körpergewichtsübungen ist die Null dagegen der Normalfall
+   * -- dort heißt sie "ohne Zusatzgewicht".
+   */
+  if (exercise.kind === 'gewicht' && !(gewicht > 0)) {
+    toast('Wie viel Gewicht?');
+    $('#log-weight').focus();
+    return;
+  }
+
   const warmup = $('#log-warmup').checked;
 
   // Für den Bestwert-Vergleich zählt alles, was *vor* diesem Satz war.
@@ -1472,7 +1874,16 @@ function renderSessionDetail() {
       el(
         'div',
         {},
-        el('p', { class: 'eyebrow' }, el('span', { class: 'dot' }), el('span', { text: formatWeekday(session.startedAt) })),
+        el(
+          'p',
+          { class: 'eyebrow' },
+          el('span', { class: 'dot' }),
+          el('span', {
+            text: session.label
+              ? `${formatWeekday(session.startedAt)} · ${session.label}`
+              : formatWeekday(session.startedAt),
+          }),
+        ),
         el('p', { class: 'detail-title', text: formatDateLong(session.startedAt) }),
         el('p', { class: 'muted fineprint', text: `${formatTime(session.startedAt)}${session.endedAt ? ` bis ${formatTime(session.endedAt)}` : ' — läuft noch'}` }),
       ),
@@ -1515,11 +1926,11 @@ function renderSessionDetail() {
       );
     }),
 
-    !session.endedAt
-      ? el(
-          'div',
-          { class: 'row-buttons' },
-          el(
+    el(
+      'div',
+      { class: 'row-buttons' },
+      !session.endedAt
+        ? el(
             'button',
             {
               type: 'button',
@@ -1530,9 +1941,30 @@ function renderSessionDetail() {
               },
             },
             'Einheit beenden',
-          ),
-        )
-      : null,
+          )
+        : null,
+      // Der bequemste Weg zu einem Plan: einmal trainieren und danach
+      // sagen "so wieder".
+      !session.planId && summary.exerciseIds.length
+        ? el(
+            'button',
+            {
+              type: 'button',
+              class: 'button',
+              onclick: async () => {
+                const name = prompt(
+                  'Wie soll der Plan heißen?',
+                  planNameSuggestion(summary.exerciseIds, namen),
+                );
+                if (!name?.trim()) return;
+                await planFromSession(store, session, sets(), name.trim());
+                toast(`„${name.trim()}" als Plan gespeichert.`);
+              },
+            },
+            'Als Plan speichern',
+          )
+        : null,
+    ),
 
     el(
       'div',

@@ -13,8 +13,8 @@ lässt sie sich zum Startbildschirm hinzufügen und verhält sich dann wie eine 
 >   anzieht: Kleiderschrank erfassen, Outfitvorschläge nach Wetter und Anlass,
 >   lernende Stilvorlieben.
 > - [**Mein Training**](fitness/) — das Trainingstagebuch: Sätze mit Gewicht
->   und Wiederholungen eintragen, Bestwerte, Fortschrittskurven und ein
->   Vorschlag, was heute drankommt.
+>   und Wiederholungen eintragen, Trainingspläne abarbeiten, Bestwerte,
+>   Fortschrittskurven und ein Vorschlag, was heute drankommt.
 >
 > Sie teilen sich nur `npm test` und den Entwicklungsserver; im Code ist keine
 > von der anderen abhängig.

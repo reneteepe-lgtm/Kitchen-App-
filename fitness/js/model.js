@@ -157,6 +157,16 @@ export function createSession(data = {}) {
     id: data.id ?? newId('ses'),
     startedAt,
     endedAt: data.endedAt ?? null,
+    /**
+     * Nach welchem Plan trainiert wurde -- wenn nach einem.
+     *
+     * Die Einheit merkt sich den Plan, nicht umgekehrt: Ein Plan, der sich
+     * alle vergangenen Trainings merkte, wüchse mit jeder Woche, und ein
+     * geänderter Plan schriebe die Geschichte um. Der Name steht deshalb
+     * zusätzlich in `label`: Er gilt für diesen Tag, auch wenn der Plan
+     * später umbenannt oder gelöscht wird.
+     */
+    planId: data.planId ?? null,
     label: String(data.label ?? '').trim(),
     createdAt: data.createdAt ?? startedAt,
   };
