@@ -100,7 +100,7 @@ import {
  * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer in `sw.js`
  * mitziehen. Ein Test wacht darüber, dass beide übereinstimmen.
  */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 /** Wie viele Wochen die Balken auf der Fortschrittsseite zeigen. */
 const WOCHEN = 8;
@@ -171,15 +171,21 @@ const icon = (name, klasse = 'icon') => {
   return svg;
 };
 
-/** Das gezeichnete Zeichen einer Muskelgruppe. */
-const muscleIcon = (muscleId, klasse = 'icon') => icon(muscleById(muscleId).symbol, klasse);
+/**
+ * Das Piktogramm einer Muskelgruppe.
+ *
+ * Eigene Klasse und nicht `.icon`: Die Muskelgruppen sind gefüllte Figuren,
+ * die übrigen Zeichen der App sind Strichzeichnungen. Beides über dieselbe
+ * Klasse zu führen hieße, `fill` und `stroke` gegeneinander zu setzen.
+ */
+const muscleIcon = (muscleId, klasse = 'pictogram') => icon(muscleById(muscleId).symbol, klasse);
 
-/** Zeichen und Name nebeneinander -- für Knöpfe und Überschriften. */
+/** Piktogramm und Name nebeneinander -- für Knöpfe und Überschriften. */
 const muscleLabel = (muscleId, klasse = 'with-icon') =>
   el(
     'span',
     { class: klasse },
-    muscleIcon(muscleId, 'icon icon-sm'),
+    muscleIcon(muscleId, 'pictogram pictogram-sm'),
     el('span', { text: muscleById(muscleId).label }),
   );
 
@@ -1042,7 +1048,7 @@ function renderMuscleFilter(alle) {
           'aria-pressed': String(state.muscleFilter === muskel.id),
           onclick: () => setMuscleFilter(muskel.id),
         },
-        muscleIcon(muskel.id, 'icon icon-sm'),
+        muscleIcon(muskel.id, 'pictogram pictogram-sm'),
         el('span', { text: muskel.label }),
       ),
     ),
