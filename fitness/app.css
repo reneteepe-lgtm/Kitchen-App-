@@ -122,6 +122,29 @@ body {
   height: 17px;
 }
 
+/*
+ * Die Muskelgruppen sind gefüllte Figuren-Piktogramme und keine
+ * Strichzeichnungen -- deshalb eine eigene Klasse mit umgekehrten
+ * Vorzeichen: Fläche statt Kontur.
+ *
+ * `stroke-width` steht hier bewusst nicht: Arme und Beine der Figuren
+ * tragen ihre Strichstärke selbst, und eine Angabe an dieser Stelle würde
+ * sie überschreiben -- die Figuren hätten dann Gliedmaßen so dünn wie ein
+ * Haar.
+ */
+.pictogram {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  stroke: none;
+  flex: none;
+}
+
+.pictogram-sm {
+  width: 18px;
+  height: 18px;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

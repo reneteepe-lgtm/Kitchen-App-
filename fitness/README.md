@@ -120,6 +120,28 @@ der App importieren kann.
 
 `npm test` schlägt fehl, wenn die beiden auseinanderlaufen.
 
+## Die Zeichen der Muskelgruppen
+
+Jede Muskelgruppe trägt ein Piktogramm: eine Figur, die die Übung macht —
+Bankdrücken, Klimmzug, Schulterdrücken, Curl, Kniebeuge, Unterarmstütz,
+Hampelmann.
+
+Kopf, Rumpf und Geräte sind gefüllte Flächen, Arme und Beine dicke Striche
+mit runden Enden. Das ist kein Geschmack, sondern der Grund, warum die
+Zeichen bei 24 Pixeln in einer Listenzeile noch etwas bedeuten: Eine Fläche
+bleibt eine Fläche, ein feines Strichgerüst franst aus. Zwei Anläufe davor —
+Emoji und dünne Umrisszeichnungen — sind genau daran gescheitert.
+
+Gezeichnet wird gegen einen Kontaktabzug (`scripts/` hat ihn nicht, er
+entsteht beim Arbeiten): jedes Zeichen groß und in Listengröße
+nebeneinander. Wer eines ändert, sollte es genauso ansehen — was bei 80
+Pixeln elegant aussieht, kann bei 22 ein Fleck sein.
+
+Eine Eigenart ist dabei wichtig: Die Striche für Arme und Beine tragen ihre
+Angaben (`stroke`, `stroke-width`) als Attribute am Element selbst. Eine
+CSS-Klasse greift nicht in den Inhalt eines `<use>` hinein — die Figuren
+hatten im ersten Versuch schlicht keine Gliedmaßen.
+
 ## Wie der Vorschlag entsteht
 
 Doppelte Progression, in zwei Sätzen:
