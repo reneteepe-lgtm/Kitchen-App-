@@ -31,7 +31,11 @@ App.
   Angelegt wird nur, was angetippt wurde; ein Verzeichnis voller Übungen,
   die niemand macht, macht jede Suche länger und jede Auswertung unschärfer.
   Was schon dabei ist, steht abgehakt da und lässt sich nicht doppelt
-  anlegen.
+  anlegen. Dieselbe Liste steht auch dort zur Verfügung, wo man sie
+  wirklich braucht: **beim Zusammenstellen eines Plans** und beim Eintragen
+  eines Satzes. Wer dort „seit" tippt, bekommt das Seitheben angeboten,
+  auch wenn es das im Verzeichnis noch gar nicht gibt — angelegt wird es
+  beim Antippen.
 - **Wissen, was heute drankommt** — nach der Regel, die in jedem
   Anfängerplan steht: alle Sätze am Ziel, also mehr Gewicht. Dazu ein Satz,
   warum („Letztes Mal alle 3 Sätze mit 8 Wdh. — leg 2,5 kg drauf").
