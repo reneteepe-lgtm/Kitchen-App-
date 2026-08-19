@@ -5,6 +5,7 @@ import { MemoryAdapter, Store } from '../js/storage.js';
 import {
   createExercise,
   addExercise,
+  addExercises,
   updateExercise,
   removeExercise,
   withHistory,
@@ -73,6 +74,29 @@ test('eine entfernte Übung nimmt ihre Sätze nicht mit', async () => {
   assert.equal(store.all('exercises').length, 0, 'aus dem Verzeichnis verschwunden');
   assert.equal(store.all('sets').length, 1, 'im Protokoll aber noch da');
   assert.equal(store.allIncludingRemoved('exercises').length, 1, 'der Name bleibt auffindbar');
+});
+
+test('legt mehrere Übungen auf einmal an', async () => {
+  const store = await frischerStore();
+  const neue = await addExercises(store, ['Bankdrücken', 'Klimmzüge', 'Plank']);
+
+  assert.equal(neue.length, 3);
+  assert.equal(store.all('exercises').length, 3);
+  assert.equal(store.all('exercises').find((ex) => ex.name === 'Plank').kind, 'zeit', 'geraten wird wie sonst auch');
+});
+
+/**
+ * Zwei Einträge derselben Übung wären zwei getrennte Verläufe, und keiner
+ * davon stimmte.
+ */
+test('was es schon gibt, wird übersprungen -- auch anders geschrieben', async () => {
+  const store = await frischerStore();
+  await addExercise(store, { name: 'Klimmzüge' });
+
+  const neue = await addExercises(store, ['Klimmzuege', 'Dips', 'Dips']);
+
+  assert.deepEqual(neue.map((ex) => ex.name), ['Dips']);
+  assert.equal(store.all('exercises').length, 2);
 });
 
 test('rechnet die Geschichte einer Übung aus, statt sie mitzuschreiben', async () => {

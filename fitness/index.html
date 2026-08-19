@@ -168,10 +168,15 @@
 
           <div class="chips" id="muscle-filter" role="group" aria-label="Nach Muskelgruppe filtern"></div>
 
+          <button type="button" class="link-button" id="btn-catalog">
+            Übungen aus der Liste hinzufügen
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg>
+          </button>
+
           <div id="exercise-list" class="stack-tight"></div>
           <p class="empty-state" id="exercises-empty" hidden>
             Noch keine Übung angelegt.<br />
-            Beim ersten Satz legst du sie nebenbei mit an.
+            Nimm sie oben aus der Liste — oder leg sie beim ersten Satz nebenbei mit an.
           </p>
         </section>
 
@@ -455,6 +460,29 @@
         <div class="dialog-actions">
           <button type="button" class="button button-ghost" data-close>Abbrechen</button>
           <button type="submit" class="button button-primary">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ============ Übungen aus dem Vorrat ============ -->
+    <!--
+      Angelegt wird, was angetippt wird -- nicht der ganze Vorrat. Ein
+      Verzeichnis mit dreißig Übungen, von denen jemand acht macht, macht
+      jede Suche und jede Auswertung schlechter.
+    -->
+    <dialog id="dlg-catalog" class="dialog dialog-tall">
+      <form method="dialog" id="form-catalog">
+        <h2>Übungen aus der Liste</h2>
+        <p class="muted">
+          Tipp an, was du machst. Der Rest bleibt weg — nachlegen kannst du
+          jederzeit.
+        </p>
+
+        <div id="catalog-groups" class="stack"></div>
+
+        <div class="dialog-actions">
+          <button type="button" class="button button-ghost" data-close>Abbrechen</button>
+          <button type="submit" class="button button-primary" id="catalog-submit">Hinzufügen</button>
         </div>
       </form>
     </dialog>

@@ -20,6 +20,7 @@ import { Store, LocalStorageAdapter, requestPersistence } from './storage.js';
 import {
   DEFAULT_SETTINGS,
   addExercise,
+  addExercises,
   updateExercise,
   removeExercise,
   withHistory,
@@ -72,7 +73,7 @@ import {
   planFromSession,
 } from './plans.js';
 import { suggestNext, suggestForToday } from './progression.js';
-import { searchExercises } from './text.js';
+import { searchExercises, normalize } from './text.js';
 import { linePath, barLayout, ringDash } from './chart.js';
 import { restState, suggestRest, justFinished } from './timer.js';
 import {
@@ -99,7 +100,7 @@ import {
  * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer in `sw.js`
  * mitziehen. Ein Test wacht darüber, dass beide übereinstimmen.
  */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 /** Wie viele Wochen die Balken auf der Fortschrittsseite zeigen. */
 const WOCHEN = 8;
@@ -201,6 +202,8 @@ const state = {
   editing: null,
   /** Der Plan, der gerade zusammengestellt wird. */
   plan: { editing: null, exerciseIds: [], search: '' },
+  /** Was im Vorrat gerade angetippt ist. */
+  catalog: new Set(),
   detailExercise: null,
   detailSession: null,
   progress: { exerciseId: null, metric: 'e1rm' },
@@ -302,6 +305,8 @@ function wireEvents() {
   $('#btn-all-sessions').addEventListener('click', () => show('history'));
   $('#btn-new-exercise').addEventListener('click', () => openExerciseForm(null));
   $('#btn-new-plan').addEventListener('click', () => openPlanForm(null));
+  $('#btn-catalog').addEventListener('click', openCatalog);
+  $('#form-catalog').addEventListener('submit', onCatalogSubmit);
   $('#btn-end-session').addEventListener('click', onEndSession);
 
   $('#exercise-search').addEventListener('input', (event) => {
@@ -1012,6 +1017,82 @@ function renderMuscleFilter(alle) {
 function setMuscleFilter(id) {
   state.muscleFilter = id;
   renderExercises();
+}
+
+/**
+ * Der Vorrat gängiger Übungen, nach Muskelgruppen sortiert.
+ *
+ * Angelegt wird, was angetippt wird. Alle dreißig auf einmal anzulegen wäre
+ * bequemer zu bauen und schlechter zu benutzen: Ein Verzeichnis voller
+ * Übungen, die niemand macht, macht jede Suche länger und jede Auswertung
+ * unschärfer.
+ */
+function openCatalog() {
+  state.catalog = new Set();
+  renderCatalog();
+  $('#dlg-catalog').showModal();
+}
+
+function renderCatalog() {
+  const vorhanden = new Set(exercisesRaw().map((exercise) => normalize(exercise.name)));
+
+  // Nach Muskelgruppe gruppieren -- in der Reihenfolge, in der die
+  // Muskelgruppen ohnehin überall in der App stehen.
+  const gruppen = new Map(MUSCLES.map((muskel) => [muskel.id, []]));
+  for (const name of CATALOG) {
+    gruppen.get(guessAttributes(name).muscle)?.push(name);
+  }
+
+  setChildren(
+    $('#catalog-groups'),
+    ...MUSCLES.filter((muskel) => gruppen.get(muskel.id)?.length).map((muskel) =>
+      el(
+        'div',
+        { class: 'stack-tight' },
+        el('h3', { text: `${muskel.icon} ${muskel.label}` }),
+        el(
+          'div',
+          { class: 'chips' },
+          ...gruppen.get(muskel.id).map((name) => {
+            const schon = vorhanden.has(normalize(name));
+            return el(
+              'button',
+              {
+                type: 'button',
+                class: schon ? 'chip chip-done' : 'chip',
+                'aria-pressed': String(state.catalog.has(name)),
+                disabled: schon,
+                title: schon ? 'schon im Verzeichnis' : null,
+                onclick: () => {
+                  if (state.catalog.has(name)) state.catalog.delete(name);
+                  else state.catalog.add(name);
+                  renderCatalog();
+                },
+              },
+              schon ? `✓ ${name}` : name,
+            );
+          }),
+        ),
+      ),
+    ),
+  );
+
+  const gewaehlt = state.catalog.size;
+  const knopf = $('#catalog-submit');
+  knopf.textContent = gewaehlt ? `${plural(gewaehlt, 'Übung', 'Übungen')} hinzufügen` : 'Hinzufügen';
+  knopf.disabled = gewaehlt === 0;
+}
+
+async function onCatalogSubmit(event) {
+  const namen = [...state.catalog];
+  if (!namen.length) {
+    event.preventDefault();
+    return;
+  }
+
+  const neue = await addExercises(store, namen);
+  state.catalog = new Set();
+  toast(`${plural(neue.length, 'Übung', 'Übungen')} angelegt.`);
 }
 
 // --- Verlauf -------------------------------------------------------------

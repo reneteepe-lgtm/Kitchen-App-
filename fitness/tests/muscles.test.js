@@ -86,20 +86,77 @@ test('angegebene Werte gewinnen gegen das Erraten', () => {
 });
 
 /**
- * Der Vorrat gängiger Übungen ist nur eine Liste von Namen. Wenn das
- * Erraten für einen davon danebenliegt, sieht man es hier -- und nicht
- * erst, wenn jemand ihn antippt.
+ * Die Liste, mit der wirklich trainiert wird -- und was die App aus jedem
+ * Namen herauslesen muss.
+ *
+ * Der Vorrat in `muscles.js` ist nur eine Liste von Namen; alles andere
+ * fällt aus dem Erraten heraus. Diese Tabelle ist die Gegenprobe: Sie hält
+ * fest, was dabei herauskommen soll, und schlägt an, wenn eine spätere
+ * Änderung am Erraten eine dieser Übungen verschiebt.
  */
-test('jeder Vorschlag aus dem Vorrat wird sinnvoll eingeordnet', () => {
-  for (const name of CATALOG) {
-    const geraten = guessAttributes(name);
-    assert.ok(geraten.muscle, `${name} ohne Muskelgruppe`);
-    assert.ok(geraten.repTarget > 0, `${name} ohne Ziel`);
-  }
+const ERWARTET = [
+  ['Bankdrücken', 'brust', 'langhantel', 'gewicht'],
+  ['Schrägbankdrücken', 'brust', 'langhantel', 'gewicht'],
+  ['Kurzhantel Bankdrücken', 'brust', 'kurzhantel', 'gewicht'],
+  ['Kurzhantel Schrägbankdrücken', 'brust', 'kurzhantel', 'gewicht'],
+  ['Butterfly / Fliegende', 'brust', 'maschine', 'gewicht'],
+  ['Dips', 'brust', 'koerper', 'koerper'],
+  ['Klimmzüge', 'ruecken', 'koerper', 'koerper'],
+  ['Latzug', 'ruecken', 'maschine', 'gewicht'],
+  ['Rudern vorgebeugt (Langhantel)', 'ruecken', 'langhantel', 'gewicht'],
+  ['Kabelrudern sitzend', 'ruecken', 'kabel', 'gewicht'],
+  ['Kreuzheben', 'ruecken', 'langhantel', 'gewicht'],
+  ['Schulterdrücken (Langhantel)', 'schultern', 'langhantel', 'gewicht'],
+  ['Kurzhantel Schulterdrücken', 'schultern', 'kurzhantel', 'gewicht'],
+  ['Seitheben', 'schultern', 'kurzhantel', 'gewicht'],
+  ['Frontheben', 'schultern', 'kurzhantel', 'gewicht'],
+  ['Face Pulls', 'schultern', 'kabel', 'gewicht'],
+  ['Bizepscurls (Langhantel)', 'arme', 'langhantel', 'gewicht'],
+  ['Kurzhantel Bizepscurls', 'arme', 'kurzhantel', 'gewicht'],
+  ['Hammercurls', 'arme', 'kurzhantel', 'gewicht'],
+  ['Trizepsdrücken am Kabel', 'arme', 'kabel', 'gewicht'],
+  ['French Press', 'arme', 'langhantel', 'gewicht'],
+  ['Kniebeugen', 'beine', 'langhantel', 'gewicht'],
+  ['45-Grad Beinpresse', 'beine', 'maschine', 'gewicht'],
+  ['Beinstrecker', 'beine', 'maschine', 'gewicht'],
+  ['Beinbeuger', 'beine', 'maschine', 'gewicht'],
+  ['Ausfallschritte', 'beine', 'koerper', 'koerper'],
+  ['Wadenheben', 'beine', 'maschine', 'gewicht'],
+  ['Crunches', 'rumpf', 'koerper', 'koerper'],
+  ['Plank', 'rumpf', 'koerper', 'zeit'],
+  ['Beinheben hängend', 'rumpf', 'koerper', 'koerper'],
+];
 
-  // Stichproben quer durch die Liste.
-  assert.equal(guessAttributes('Beinbeuger').muscle, 'beine');
-  assert.equal(guessAttributes('Face Pull').muscle, 'ruecken');
-  assert.equal(guessAttributes('Hammercurls').muscle, 'arme');
-  assert.equal(guessAttributes('Burpees').kind, 'koerper');
+test('jede Übung aus dem Vorrat wird richtig eingeordnet', () => {
+  for (const [name, muskel, geraet, art] of ERWARTET) {
+    const geraten = guessAttributes(name);
+    assert.equal(geraten.muscle, muskel, `${name}: Muskelgruppe`);
+    assert.equal(geraten.equipment, geraet, `${name}: Gerät`);
+    assert.equal(geraten.kind, art, `${name}: Art`);
+    assert.ok(geraten.repTarget > 0, `${name}: ohne Ziel`);
+  }
+});
+
+test('der Vorrat und die geprüfte Tabelle bleiben beieinander', () => {
+  assert.deepEqual(CATALOG, ERWARTET.map(([name]) => name));
+});
+
+/**
+ * "Beinheben hängend" hat einmal als Zeitübung gegolten, weil "hängend"
+ * auf das Stichwort für den Dead Hang passte. Gehalten wird dabei nichts --
+ * gezählt werden Wiederholungen.
+ */
+test('hängende Übungen sind keine gehaltenen', () => {
+  assert.equal(guessKind('Beinheben hängend'), 'koerper');
+  assert.equal(guessKind('Dead Hang'), 'zeit');
+});
+
+/**
+ * Ohne diese Zuordnung liefen Seitheben und Hammercurls als
+ * Langhantelübungen und bekämen 2,5-kg-Schritte vorgeschlagen -- an einer
+ * 8-kg-Kurzhantel ist das ein Drittel mehr Gewicht.
+ */
+test('Übungen, deren Gerät im Namen nicht steht, bekommen es trotzdem', () => {
+  assert.equal(incrementFor({ equipment: guessEquipment('Seitheben') }), 2);
+  assert.equal(incrementFor({ equipment: guessEquipment('Hammercurls') }), 2);
 });

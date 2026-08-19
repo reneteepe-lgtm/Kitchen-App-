@@ -21,6 +21,7 @@
 
 import { newId } from './storage.js';
 import { guessAttributes } from './muscles.js';
+import { normalize } from './text.js';
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -80,6 +81,32 @@ export async function addExercise(store, data) {
   const exercise = createExercise(data);
   await store.put('exercises', exercise);
   return exercise;
+}
+
+/**
+ * Legt mehrere Übungen auf einmal an -- aus dem Vorrat gängiger Übungen.
+ *
+ * In einem Schreibvorgang und einem Zeichenvorgang: Wer zehn Übungen
+ * antippt, wartet sonst zehn Mal auf dasselbe.
+ *
+ * Was es schon gibt, wird übersprungen. Verglichen wird über `normalize`,
+ * damit „Klimmzüge" und „Klimmzuege" nicht zweimal im Verzeichnis landen --
+ * zwei Einträge derselben Übung wären zwei getrennte Verläufe, und keiner
+ * davon stimmte.
+ */
+export async function addExercises(store, names) {
+  const vorhanden = new Set(store.all('exercises').map((exercise) => normalize(exercise.name)));
+  const neue = [];
+
+  for (const name of names) {
+    const schluessel = normalize(name);
+    if (!schluessel || vorhanden.has(schluessel)) continue;
+    vorhanden.add(schluessel);
+    neue.push(createExercise({ name }));
+  }
+
+  if (neue.length) await store.putMany(neue.map((exercise) => ['exercises', exercise]));
+  return neue;
 }
 
 /**
