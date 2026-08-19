@@ -1,12 +1,13 @@
 {
   "name": "kuechenvorrat",
   "version": "1.0.0",
-  "description": "Zwei kleine Web-Apps ohne Server: Vorratsverwaltung für die Küche und ein Kleiderschrank mit Outfitvorschlägen",
+  "description": "Drei kleine Web-Apps ohne Server: Vorratsverwaltung für die Küche, ein Kleiderschrank mit Outfitvorschlägen und ein Trainingstagebuch",
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "node --test \"tests/*.test.js\" \"kleiderschrank/tests/*.test.js\"",
+    "test": "node --test \"tests/*.test.js\" \"kleiderschrank/tests/*.test.js\" \"fitness/tests/*.test.js\"",
     "serve": "node scripts/serve.js",
-    "icons": "node kleiderschrank/scripts/make-icons.js"
+    "icons:kleiderschrank": "node kleiderschrank/scripts/make-icons.js",
+    "icons:fitness": "node fitness/scripts/make-icons.js"
   }
 }

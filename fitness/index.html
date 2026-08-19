@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#2f5aa8" />
+    <title>Mein Training</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-180.png" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <!--
+      Die Symbole stehen einmal hier und werden über <use> eingebunden.
+      Sonst stünde dasselbe Pfad-Gekritzel ein Dutzend Mal in der Datei --
+      und die Reiterleiste allein bräuchte fünf Kopien davon.
+    -->
+    <svg class="sprite" aria-hidden="true">
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+      <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 20v-6M12.5 20V9M17 20v-9"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 3 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1z"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+      <symbol id="i-cross" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.5l3.5 2"/></symbol>
+      <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4.5v1.5A3.5 3.5 0 0 0 8 11M17 6h2.5v1.5A3.5 3.5 0 0 1 16 11M12 14v3M9 20h6M10 20l.5-3h3l.5 3"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></symbol>
+      <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3s5 4 5 8a5 5 0 0 1-10 0c0-1.5 1-3 1-3s.5 1.5 2 2c0-3 2-7 2-7z"/></symbol>
+    </svg>
+
+    <div class="app">
+      <main id="main">
+        <!-- ============ Start ============ -->
+        <section id="view-home" class="view" aria-label="Training">
+          <header class="page-head">
+            <h1>Training</h1>
+            <button id="btn-settings" class="icon-button" aria-label="Einstellungen">
+              <svg class="icon" aria-hidden="true"><use href="#i-gear" /></svg>
+            </button>
+          </header>
+
+          <!--
+            Die Wochenkarte steht ganz oben, weil sie die einzige Frage
+            beantwortet, die man sich vor dem Training stellt: Bin ich diese
+            Woche schon dran gewesen?
+          -->
+          <article class="card week-card">
+            <button class="week-main" id="open-progress">
+              <div class="ring" aria-hidden="true">
+                <svg viewBox="0 0 120 120">
+                  <circle class="ring-track" cx="60" cy="60" r="52" />
+                  <circle class="ring-value" id="ring-value" cx="60" cy="60" r="52" />
+                </svg>
+                <div class="ring-label">
+                  <strong id="ring-count">0</strong>
+                  <span id="ring-goal">von 3</span>
+                </div>
+              </div>
+
+              <div class="week-text">
+                <p class="eyebrow"><span class="dot"></span><span id="week-state">Diese Woche</span></p>
+                <h2 id="week-headline">Noch nichts trainiert</h2>
+                <p class="muted" id="week-sub">Dein Ziel sind drei Einheiten pro Woche</p>
+              </div>
+
+              <span class="chevron" aria-hidden="true">
+                <svg class="icon"><use href="#i-chevron" /></svg>
+              </span>
+            </button>
+
+            <div class="card-foot">
+              <span id="streak-line" class="muted"></span>
+              <button type="button" class="link-button" id="btn-start-set">
+                Satz eintragen <svg class="icon icon-sm" aria-hidden="true"><use href="#i-arrow" /></svg>
+              </button>
+            </div>
+          </article>
+
+          <!-- Die laufende Einheit, solange eine läuft. -->
+          <article class="card session-card" id="live-card" hidden>
+            <div class="live-head">
+              <p class="eyebrow live"><span class="dot"></span>Läuft gerade</p>
+              <button type="button" class="pill pill-quiet" id="btn-end-session">
+                <svg class="icon icon-sm" aria-hidden="true"><use href="#i-stop" /></svg> Beenden
+              </button>
+            </div>
+            <div class="stat-row" id="live-stats"></div>
+            <div id="live-sets" class="stack-tight"></div>
+          </article>
+
+          <!-- Die Pausenuhr. Sichtbar, solange sie läuft. -->
+          <article class="card rest-card" id="rest-card" hidden>
+            <div class="rest-body">
+              <div class="rest-clock">
+                <strong id="rest-remaining">0:00</strong>
+                <span class="muted" id="rest-total"></span>
+              </div>
+              <div class="rest-bar" aria-hidden="true"><span id="rest-fill"></span></div>
+            </div>
+            <div class="row-buttons">
+              <button type="button" class="button button-ghost" id="btn-rest-plus">+30 s</button>
+              <button type="button" class="button button-ghost" id="btn-rest-stop">Pause beenden</button>
+            </div>
+          </article>
+
+          <section class="section" id="next-section">
+            <div class="section-head">
+              <div>
+                <h2>Weiter wie geplant</h2>
+                <p class="muted">Was beim letzten Mal herauskam — und was heute drankommt.</p>
+              </div>
+            </div>
+            <div class="scroller" id="next-strip"></div>
+            <p class="empty-state" id="next-empty" hidden>
+              Noch keine Übung trainiert.<br />
+              Tippe unten auf <strong>+</strong> und trag deinen ersten Satz ein.
+            </p>
+          </section>
+
+          <section class="section">
+            <div class="section-head">
+              <h2>Letzte Einheiten</h2>
+              <button type="button" class="pill" id="btn-all-sessions">Alle ansehen</button>
+            </div>
+            <div id="recent-sessions" class="stack-tight"></div>
+            <p class="empty-state" id="sessions-empty" hidden>Noch kein Training aufgezeichnet.</p>
+          </section>
+        </section>
+
+        <!-- ============ Übungen ============ -->
+        <section id="view-exercises" class="view" hidden aria-label="Übungen">
+          <header class="page-head">
+            <h1>Übungen</h1>
+            <button type="button" class="pill" id="btn-new-exercise">Neue Übung</button>
+          </header>
+
+          <div class="search-row">
+            <svg class="icon search-icon" aria-hidden="true"><use href="#i-search" /></svg>
+            <input id="exercise-search" type="search" placeholder="Übung suchen" autocomplete="off" aria-label="Übungen durchsuchen" />
+          </div>
+
+          <div class="chips" id="muscle-filter" role="group" aria-label="Nach Muskelgruppe filtern"></div>
+
+          <div id="exercise-list" class="stack-tight"></div>
+          <p class="empty-state" id="exercises-empty" hidden>
+            Noch keine Übung angelegt.<br />
+            Beim ersten Satz legst du sie nebenbei mit an.
+          </p>
+        </section>
+
+        <!-- ============ Verlauf ============ -->
+        <section id="view-history" class="view" hidden aria-label="Verlauf">
+          <header class="page-head">
+            <h1>Verlauf</h1>
+            <span class="count-badge" id="history-count"></span>
+          </header>
+          <div id="history-list" class="stack"></div>
+          <p class="empty-state" id="history-empty" hidden>Hier stehen deine Trainingseinheiten, sobald es welche gibt.</p>
+        </section>
+
+        <!-- ============ Fortschritt ============ -->
+        <section id="view-progress" class="view" hidden aria-label="Fortschritt">
+          <header class="page-head">
+            <h1>Fortschritt</h1>
+          </header>
+
+          <article class="card">
+            <div class="section-head">
+              <h2>Volumen je Woche</h2>
+              <span class="tag" id="volume-trend"></span>
+            </div>
+            <div class="chart" id="volume-chart"></div>
+            <p class="muted fineprint" id="volume-note"></p>
+          </article>
+
+          <article class="card">
+            <div class="section-head">
+              <h2>Verlauf einer Übung</h2>
+            </div>
+            <label class="field">
+              <span class="visually-hidden">Übung wählen</span>
+              <select id="progress-exercise"></select>
+            </label>
+            <div class="chips" id="metric-choice" role="group" aria-label="Was gezeigt wird"></div>
+            <div class="chart" id="exercise-chart"></div>
+            <p class="muted fineprint" id="exercise-note"></p>
+          </article>
+
+          <article class="card">
+            <div class="section-head">
+              <h2>Bestwerte</h2>
+            </div>
+            <div id="records-list" class="stack-tight"></div>
+            <p class="empty-state" id="records-empty" hidden>Noch keine Bestwerte — die kommen von selbst.</p>
+          </article>
+
+          <article class="card">
+            <div class="section-head">
+              <h2>Muskelgruppen</h2>
+            </div>
+            <div id="muscle-shares" class="stack-tight"></div>
+            <p class="muted fineprint">
+              Anteil am bewegten Gewicht der letzten acht Wochen. Keine Note —
+              nur das Bild, damit nichts unbemerkt liegen bleibt.
+            </p>
+          </article>
+
+          <article class="card">
+            <div class="section-head">
+              <h2>Insgesamt</h2>
+            </div>
+            <div class="stat-row" id="totals-row"></div>
+          </article>
+        </section>
+
+        <!-- ============ Einstellungen ============ -->
+        <section id="view-more" class="view" hidden aria-label="Einstellungen">
+          <header class="page-head">
+            <h1>Einstellungen</h1>
+          </header>
+
+          <article class="card">
+            <h2>Training</h2>
+            <label class="field">
+              <span>Einheiten pro Woche: <output id="goal-out"></output></span>
+              <input id="setting-goal" type="range" min="1" max="7" step="1" />
+            </label>
+            <label class="field">
+              <span>Satzpause: <output id="rest-out"></output></span>
+              <input id="setting-rest" type="range" min="30" max="300" step="15" />
+            </label>
+            <div class="field">
+              <span>Einheit</span>
+              <div class="chips" id="unit-choice" role="group" aria-label="Einheit wählen"></div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h2>Körpergewicht</h2>
+            <p class="muted">
+              Freiwillig. Ohne diese Angabe zählen Klimmzüge und Liegestütze
+              im Volumen mit null Kilogramm — also gar nicht.
+            </p>
+            <label class="field">
+              <span>Dein Gewicht</span>
+              <input id="setting-bodyweight" type="text" inputmode="decimal" placeholder="z. B. 78" autocomplete="off" />
+            </label>
+            <p class="muted fineprint">
+              Wird für nichts anderes verwendet und verlässt dieses Gerät nicht.
+            </p>
+          </article>
+
+          <article class="card">
+            <h2>Sicherung</h2>
+            <p class="muted" id="storage-line"></p>
+            <div class="row-buttons">
+              <button type="button" class="button" id="btn-export">Daten sichern</button>
+              <button type="button" class="button button-ghost" id="btn-import">Sicherung einlesen</button>
+            </div>
+            <p class="muted fineprint">
+              Die Sicherung enthält alle Übungen, Einheiten und Sätze. Beim
+              Einlesen wird zusammengeführt, nicht überschrieben — dasselbe
+              Training zweimal einzulesen ändert nichts.
+            </p>
+            <input id="import-file" type="file" accept="application/json" hidden />
+          </article>
+
+          <article class="card">
+            <h2>Über diese App</h2>
+            <p class="muted">
+              Läuft ohne Konto und ohne Server. Alles bleibt auf diesem Gerät.
+            </p>
+            <p class="muted fineprint">Fassung <span id="app-version">—</span></p>
+            <div class="row-buttons">
+              <button type="button" class="button button-danger" id="btn-reset">Alles löschen</button>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <!-- ============ Reiterleiste ============ -->
+      <!--
+        Bewusst kein `role="tablist"`: Der Knopf in der Mitte gehört mit
+        dazu, öffnet aber keinen Bereich, sondern einen Dialog. Eine
+        Reiterleiste mit einem Element, das kein Reiter ist, wäre für
+        Vorlesehilfen falsch ausgezeichnet -- `aria-current` sagt schlicht,
+        wo man gerade ist.
+      -->
+      <nav class="tabbar" aria-label="Bereiche">
+        <button type="button" class="tab" data-view="home" aria-current="page" aria-label="Training">
+          <svg class="icon" aria-hidden="true"><use href="#i-home" /></svg>
+        </button>
+        <button type="button" class="tab" data-view="exercises" aria-label="Übungen">
+          <svg class="icon" aria-hidden="true"><use href="#i-dumbbell" /></svg>
+        </button>
+        <button type="button" class="tab tab-add" id="btn-log" aria-label="Satz eintragen">
+          <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+        </button>
+        <button type="button" class="tab" data-view="history" aria-label="Verlauf">
+          <svg class="icon" aria-hidden="true"><use href="#i-list" /></svg>
+        </button>
+        <button type="button" class="tab" data-view="progress" aria-label="Fortschritt">
+          <svg class="icon" aria-hidden="true"><use href="#i-chart" /></svg>
+        </button>
+      </nav>
+    </div>
+
+    <!-- ============ Satz eintragen ============ -->
+    <!--
+      Der wichtigste Bildschirm der App. Er wird zwischen zwei Sätzen
+      benutzt, im Stehen, mit einer Hand, und bleibt nach dem Eintragen
+      offen: Wer drei Sätze macht, tippt dreimal denselben Knopf.
+    -->
+    <dialog id="dlg-log" class="dialog dialog-tall">
+      <div class="log-head">
+        <button type="button" class="exercise-picker-button" id="log-exercise-button">
+          <span class="eyebrow" id="log-muscle">Übung wählen</span>
+          <strong id="log-exercise-name">Übung wählen</strong>
+        </button>
+        <button type="button" class="icon-button" data-close aria-label="Schließen">
+          <svg class="icon" aria-hidden="true"><use href="#i-cross" /></svg>
+        </button>
+      </div>
+
+      <!-- Übung suchen -->
+      <div id="log-picker">
+        <div class="search-row">
+          <svg class="icon search-icon" aria-hidden="true"><use href="#i-search" /></svg>
+          <input id="log-search" type="search" placeholder="Übung suchen oder anlegen" autocomplete="off" aria-label="Übung suchen" />
+        </div>
+        <div id="log-results" class="stack-tight"></div>
+      </div>
+
+      <!-- Satz eintragen -->
+      <form id="log-form" method="dialog" hidden>
+        <p class="muted suggestion-line" id="log-suggestion"></p>
+
+        <div class="steppers" id="log-steppers">
+          <div class="stepper" id="stepper-weight">
+            <label class="stepper-label" for="log-weight" id="log-weight-label">Gewicht</label>
+            <div class="stepper-row">
+              <button type="button" class="round-button" data-step="weight" data-dir="-1" aria-label="Weniger Gewicht">
+                <svg class="icon" aria-hidden="true"><use href="#i-minus" /></svg>
+              </button>
+              <input id="log-weight" type="text" inputmode="decimal" autocomplete="off" />
+              <button type="button" class="round-button" data-step="weight" data-dir="1" aria-label="Mehr Gewicht">
+                <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="stepper" id="stepper-reps">
+            <label class="stepper-label" for="log-reps" id="log-reps-label">Wiederholungen</label>
+            <div class="stepper-row">
+              <button type="button" class="round-button" data-step="reps" data-dir="-1" aria-label="Weniger Wiederholungen">
+                <svg class="icon" aria-hidden="true"><use href="#i-minus" /></svg>
+              </button>
+              <input id="log-reps" type="text" inputmode="numeric" autocomplete="off" />
+              <button type="button" class="round-button" data-step="reps" data-dir="1" aria-label="Mehr Wiederholungen">
+                <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <label class="checkbox">
+          <input id="log-warmup" type="checkbox" />
+          <span>Aufwärmsatz — zählt nicht in Bestwerte und Volumen</span>
+        </label>
+
+        <button type="submit" class="button button-primary button-big" id="log-submit">
+          <svg class="icon" aria-hidden="true"><use href="#i-check" /></svg> Satz eintragen
+        </button>
+
+        <div class="today-sets">
+          <p class="muted fineprint" id="log-today-head"></p>
+          <div id="log-today" class="stack-tight"></div>
+        </div>
+
+        <p class="muted fineprint" id="log-last"></p>
+      </form>
+    </dialog>
+
+    <!-- ============ Übung anlegen und ändern ============ -->
+    <dialog id="dlg-exercise" class="dialog">
+      <form method="dialog" id="form-exercise">
+        <h2 id="exercise-form-title">Neue Übung</h2>
+
+        <label class="field">
+          <span>Wie heißt die Übung?</span>
+          <input id="exercise-name" type="text" required placeholder="z. B. Bankdrücken" autocomplete="off" />
+        </label>
+
+        <!--
+          Was die App aus dem Namen gelesen hat, steht sofort da. Nicht als
+          Formular, sondern als Satz: Wer nichts ändern will, muss nichts
+          anfassen; wer widerspricht, klappt es auf.
+        -->
+        <div class="guessed" id="exercise-guessed">
+          <p class="guessed-line"><span id="guessed-text" class="muted"></span></p>
+          <button type="button" class="link-button" id="toggle-details">Stimmt nicht ganz</button>
+        </div>
+
+        <div class="details" id="exercise-details" hidden>
+          <label class="field">
+            <span>Muskelgruppe</span>
+            <select id="exercise-muscle"></select>
+          </label>
+          <label class="field">
+            <span>Gerät</span>
+            <select id="exercise-equipment"></select>
+          </label>
+          <label class="field">
+            <span>Art</span>
+            <select id="exercise-kind"></select>
+          </label>
+          <label class="field">
+            <span id="exercise-target-label">Wiederholungsziel: <output id="target-out"></output></span>
+            <input id="exercise-target" type="range" min="1" max="30" step="1" />
+          </label>
+        </div>
+
+        <div class="catalog" id="exercise-catalog" hidden>
+          <p class="muted fineprint">Häufige Übungen — antippen genügt:</p>
+          <div class="chips" id="catalog-chips"></div>
+        </div>
+
+        <div class="dialog-actions">
+          <button type="button" class="button button-ghost" data-close>Abbrechen</button>
+          <button type="submit" class="button button-primary">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ============ Eine Übung ansehen ============ -->
+    <dialog id="dlg-detail" class="dialog dialog-tall">
+      <div id="detail-body"></div>
+    </dialog>
+
+    <!-- ============ Eine Einheit ansehen ============ -->
+    <dialog id="dlg-session" class="dialog dialog-tall">
+      <div id="session-body"></div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

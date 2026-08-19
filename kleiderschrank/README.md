@@ -77,14 +77,14 @@ lädt der Browser die nicht.
 npm test
 ```
 
-Läuft über beide Apps im Repository.
+Läuft über alle Apps im Repository.
 
 ### Symbole
 
 Die App-Symbole werden erzeugt, nicht abgelegt:
 
 ```bash
-npm run icons
+npm run icons:kleiderschrank
 ```
 
 Das Skript zeichnet den Kleiderbügel aus Abstandsfunktionen und schreibt SVG
