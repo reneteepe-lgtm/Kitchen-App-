@@ -17,7 +17,7 @@
  * dass der Browser diese Datei als geändert erkennt, den neuen Worker
  * installiert und der alte Cache verworfen wird.
  */
-const CACHE = 'training-v1.0.0';
+const CACHE = 'training-v1.1.0';
 
 const SHELL = [
   './',
@@ -29,6 +29,7 @@ const SHELL = [
   './js/model.js',
   './js/storage.js',
   './js/muscles.js',
+  './js/plans.js',
   './js/stats.js',
   './js/progression.js',
   './js/format.js',

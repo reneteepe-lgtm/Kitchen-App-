@@ -34,6 +34,8 @@
       <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
       <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
       <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></symbol>
+      <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></symbol>
+      <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14m6-6-6 6-6-6"/></symbol>
       <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3s5 4 5 8a5 5 0 0 1-10 0c0-1.5 1-3 1-3s.5 1.5 2 2c0-3 2-7 2-7z"/></symbol>
     </svg>
 
@@ -88,7 +90,7 @@
           <!-- Die laufende Einheit, solange eine läuft. -->
           <article class="card session-card" id="live-card" hidden>
             <div class="live-head">
-              <p class="eyebrow live"><span class="dot"></span>Läuft gerade</p>
+              <p class="eyebrow live"><span class="dot"></span><span id="live-label">Läuft gerade</span></p>
               <button type="button" class="pill pill-quiet" id="btn-end-session">
                 <svg class="icon icon-sm" aria-hidden="true"><use href="#i-stop" /></svg> Beenden
               </button>
@@ -112,11 +114,27 @@
             </div>
           </article>
 
+          <section class="section" id="plans-section">
+            <div class="section-head">
+              <div>
+                <h2>Trainingspläne</h2>
+                <p class="muted" id="plans-sub">Zusammenstellen, antippen, loslegen.</p>
+              </div>
+              <button type="button" class="pill" id="btn-new-plan">Neuer Plan</button>
+            </div>
+            <div class="scroller" id="plan-strip"></div>
+            <p class="empty-state" id="plans-empty" hidden>
+              Noch kein Plan.<br />
+              Stell dir einen zusammen — oder trainier einfach los und sichere
+              die Einheit hinterher als Plan.
+            </p>
+          </section>
+
           <section class="section" id="next-section">
             <div class="section-head">
               <div>
-                <h2>Weiter wie geplant</h2>
-                <p class="muted">Was beim letzten Mal herauskam — und was heute drankommt.</p>
+                <h2 id="next-title">Weiter wie geplant</h2>
+                <p class="muted" id="next-sub">Was beim letzten Mal herauskam — und was heute drankommt.</p>
               </div>
             </div>
             <div class="scroller" id="next-strip"></div>
@@ -437,6 +455,43 @@
         <div class="dialog-actions">
           <button type="button" class="button button-ghost" data-close>Abbrechen</button>
           <button type="submit" class="button button-primary">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ============ Trainingsplan zusammenstellen ============ -->
+    <!--
+      Ein Plan ist eine Reihenfolge von Übungen und sonst nichts. Deshalb
+      hat dieser Dialog kein Feld für Gewichte oder Satzzahlen: Die stehen
+      im Protokoll, und was heute drankommt, rechnet die App daraus aus.
+    -->
+    <dialog id="dlg-plan" class="dialog dialog-tall">
+      <form method="dialog" id="form-plan">
+        <h2 id="plan-form-title">Neuer Plan</h2>
+
+        <label class="field">
+          <span>Wie soll der Plan heißen?</span>
+          <input id="plan-name" type="text" required placeholder="z. B. Push" autocomplete="off" />
+        </label>
+
+        <div class="stack-tight">
+          <p class="muted fineprint" id="plan-chosen-head"></p>
+          <div id="plan-chosen" class="stack-tight"></div>
+        </div>
+
+        <div class="search-row">
+          <svg class="icon search-icon" aria-hidden="true"><use href="#i-search" /></svg>
+          <input id="plan-search" type="search" placeholder="Übung hinzufügen" autocomplete="off" aria-label="Übung suchen" />
+        </div>
+        <div id="plan-results" class="stack-tight"></div>
+
+        <div class="dialog-actions">
+          <button type="button" class="button button-ghost" data-close>Abbrechen</button>
+          <button type="submit" class="button button-primary">Speichern</button>
+        </div>
+
+        <div class="row-buttons" id="plan-danger" hidden>
+          <button type="button" class="button button-danger" id="btn-delete-plan">Plan löschen</button>
         </div>
       </form>
     </dialog>

@@ -9,8 +9,11 @@
  * gespeichert werden:
  *
  *  - **Übungen** (`exercises`) ändern sich selten und werden nachgeschlagen.
+ *  - **Trainingspläne** (`plans`) sind eine Reihenfolge von Übungen und
+ *    sonst nichts. Sie halten kein Gewicht und keine Satzzahl fest -- das
+ *    steht im Protokoll und ändert sich jede Woche.
  *  - **Einheiten** (`sessions`) sind der Rahmen eines Trainings: wann es
- *    anfing, wann es zu Ende war.
+ *    anfing, wann es zu Ende war, und nach welchem Plan.
  *  - **Sätze** (`sets`) sind das eigentliche Protokoll -- und der Grund,
  *    warum es diese App gibt.
  *
@@ -29,7 +32,7 @@
  * anderen Gerät zurück.
  */
 
-export const COLLECTIONS = ['exercises', 'sessions', 'sets'];
+export const COLLECTIONS = ['exercises', 'plans', 'sessions', 'sets'];
 
 /**
  * Bittet den Browser, diese Daten dauerhaft zu behalten.
@@ -57,6 +60,8 @@ export async function requestPersistence(storage = globalThis.navigator?.storage
 const emptyState = () => ({
   /** Die Übungen, die jemand tatsächlich macht. */
   exercises: {},
+  /** Trainingspläne: welche Übungen in welcher Reihenfolge. */
+  plans: {},
   /** Trainingseinheiten -- ein Datum, ein Anfang, ein Ende. */
   sessions: {},
   /** Jeder einzelne Satz. Das Gedächtnis der App. */

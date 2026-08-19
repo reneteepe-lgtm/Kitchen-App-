@@ -687,6 +687,102 @@ button {
   overflow: hidden;
 }
 
+/* --- Trainingspläne ---------------------------------------------------- */
+
+/*
+ * Die Plankarte hat zwei Ziele: den Namen (öffnet den Plan zum Ändern) und
+ * den Startknopf. Getrennt, weil beides oft gebraucht wird und ein
+ * langes Drücken für "ändern" niemand von allein findet.
+ */
+.plan-card {
+  flex: none;
+  width: 74%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.plan-card-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 16px 16px 12px;
+  cursor: pointer;
+}
+
+.plan-card-main h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.plan-exercises {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-dim);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.plan-start {
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 750;
+  padding: 13px 16px;
+  min-height: var(--tap);
+  cursor: pointer;
+}
+
+.plan-start:active {
+  opacity: 0.75;
+}
+
+/* Eine Zeile im Plan-Dialog: Nummer, Name, Reihenfolge, Weg damit. */
+.plan-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--tile);
+  font-size: 15px;
+}
+
+.plan-step .set-number {
+  background: var(--surface);
+}
+
+.plan-step-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Abgehakt: was im laufenden Plan schon steht. */
+.done-mark {
+  color: var(--good);
+}
+
 /* --- Zeilen ------------------------------------------------------------ */
 
 .row-item {
