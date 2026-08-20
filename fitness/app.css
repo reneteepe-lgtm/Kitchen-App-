@@ -808,6 +808,26 @@ button {
 
 /* --- Zeilen ------------------------------------------------------------ */
 
+/*
+ * `flex: none` ist hier keine Feinheit, sondern der Unterschied zwischen
+ * lesbar und unlesbar.
+ *
+ * Diese Zeilen stehen in Flex-Spalten (`.stack-tight`, die Dialoginhalte),
+ * und Flex-Elemente schrumpfen von sich aus, sobald die Spalte zu hoch
+ * wird. Eine Zeile mit zweizeiliger Unterzeile wurde dann auf 44 Pixel
+ * gestaucht, während ihr Inhalt 85 brauchte -- der Text lief unten heraus
+ * und über die nächste Zeile. Zu sehen war das erst, wenn genug Zeilen
+ * zusammenkamen, also genau beim Zusammenstellen eines Plans.
+ *
+ * Mit `flex: none` behält jede Zeile ihre Höhe, die Liste wird zu hoch --
+ * und genau dafür hat sie ihr eigenes `overflow-y: auto`.
+ */
+.row-item,
+.set-row,
+.plan-step {
+  flex: none;
+}
+
 .row-item {
   display: flex;
   align-items: center;
@@ -841,9 +861,18 @@ button {
   white-space: nowrap;
 }
 
+/*
+ * Einzeilig mit Auslassung: Eine umbrechende Unterzeile machte jede zweite
+ * Zeile höher als ihre Nachbarn, und eine Liste aus lauter verschieden
+ * hohen Zeilen liest sich schlecht -- man sucht darin nach dem Namen und
+ * nicht nach der Zeilenhöhe.
+ */
 .row-sub {
   font-size: 13px;
   color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row-right {
