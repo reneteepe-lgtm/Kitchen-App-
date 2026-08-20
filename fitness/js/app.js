@@ -100,7 +100,7 @@ import {
  * Bei jeder Veröffentlichung erhöhen -- und dieselbe Nummer in `sw.js`
  * mitziehen. Ein Test wacht darüber, dass beide übereinstimmen.
  */
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 
 /** Wie viele Wochen die Balken auf der Fortschrittsseite zeigen. */
 const WOCHEN = 8;
@@ -1103,7 +1103,10 @@ function katalogZeile(name, weiter) {
       el('span', { class: 'row-title', text: name }),
       el('span', {
         class: 'row-sub',
-        text: `Aus der Liste · ${muscleById(geraten.muscle).label} · ${equipmentById(geraten.equipment).label}`,
+        // Kurz halten: Die Unterzeile bricht nicht mehr um, und "Neu" sagt
+        // dasselbe wie "Aus der Liste" -- die Überschrift darüber sagt es
+        // ohnehin schon.
+        text: `Neu · ${muscleById(geraten.muscle).label} · ${equipmentById(geraten.equipment).label}`,
       }),
     ),
     el('span', { class: 'row-right' }, icon('i-plus')),
